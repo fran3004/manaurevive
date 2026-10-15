@@ -1742,13 +1742,13 @@ map.on("error", (e) => {
   }
 });
 
-// Timeout de contingencia: si en 14 segundos el mapa no carga, mostrar aviso de recarga
-setTimeout(() => {
+// La carga inicial en redes lentas puede tardar; quita el aviso si termina correctamente.
+const mapLoadTimeout = setTimeout(() => {
   if (!mapLoaded) {
-    console.warn("[Manaure 3D] Tiempo de espera (14s) agotado sin disparo de map.on('load')");
+    console.warn("[Manaure 3D] Tiempo de espera (45s) agotado sin disparo de map.on('load')");
     mostrarFalloMapa("El mapa 3D está tardando más de lo habitual en responder. Haz clic en 'Recargar página' para intentar de nuevo.");
   }
-}, 14000);
+}, 45000);
 
 /* =========================================================================
    4) COLIBRÍ DEL PERIJÁ (PERSISTENTE QUE NUNCA DESAPARECE)
@@ -2716,8 +2716,11 @@ map.on("style.load", () => {
 
 // BLINDAJE SENIOR: Todo lo que agrega capas, fuentes o marcadores se ejecuta dentro de map.on("load")
 map.on("load", () => {
+  clearTimeout(mapLoadTimeout);
   mapLoaded = true;
   window.mapLoaded = true;
+  const staleErrorOverlay = document.getElementById("mapaErrorOverlay");
+  if (staleErrorOverlay) staleErrorOverlay.remove();
   logDebug("Evento map.on('load') completado exitosamente.");
   if (isDebugMode) {
     const s = document.getElementById("debugHudStatus");
