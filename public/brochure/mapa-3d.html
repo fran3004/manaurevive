@@ -5,9 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Manaure Vive · Mapa 3D Satelital Interactivo</title>
 
-<!-- MapLibre GL JS uses public map and terrain tiles without a private API token. -->
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+<script src="./mapbox-config.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script>
+window.mapEngineReady = new Promise((resolve, reject) => {
+  const script = document.createElement("script");
+  script.src = window.MAPBOX_ACCESS_TOKEN
+    ? "https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"
+    : "https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.js";
+  script.onload = resolve;
+  script.onerror = () => reject(new Error("No se pudo descargar el motor del mapa."));
+  document.head.appendChild(script);
+});
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -553,11 +564,12 @@
   }
 
   /* Controles nativos del mapa (esquina superior derecha, independiente de #bar) */
-  .maplibregl-ctrl-top-right {
+  .mapboxgl-ctrl-top-right, .maplibregl-ctrl-top-right {
     top: 12px !important;
     right: 12px !important;
     z-index: 30;
   }
+  .mapboxgl-ctrl-top-right .mapboxgl-ctrl,
   .maplibregl-ctrl-top-right .maplibregl-ctrl {
     margin: 0 0 8px 0;
     box-shadow: 0 4px 16px rgba(0,0,0,0.22);
@@ -955,7 +967,7 @@
       padding: 6px 9px;
     }
     #bar button, #bar select { min-height: 44px; }
-    .maplibregl-ctrl-top-right { top: auto !important; bottom: 12px !important; }
+    .mapboxgl-ctrl-top-right, .maplibregl-ctrl-top-right { top: auto !important; bottom: 12px !important; }
     #bar {
       left: 8px;
       right: auto;
@@ -1127,7 +1139,7 @@
   #bar .ally-list { flex-direction: column; }
 
   /* Lo que estaba abajo se reubica para no quedar bajo la tarjeta */
-  .maplibregl-ctrl-bottom-left { top: 0; bottom: auto; }
+  .mapboxgl-ctrl-bottom-left, .maplibregl-ctrl-bottom-left { top: 0; bottom: auto; }
   #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 90px); }
 
   @media (min-width: 601px) {
@@ -1151,8 +1163,8 @@
     #bar #btnVerTodo { grid-column: 1 / -1; }
   }
   @media (max-width: 600px) {
-    .maplibregl-ctrl-top-right { top: 8px !important; bottom: auto !important; }
-    .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; right: 52px; }
+    .mapboxgl-ctrl-top-right, .maplibregl-ctrl-top-right { top: 8px !important; bottom: auto !important; }
+    .mapboxgl-ctrl-bottom-right, .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; right: 52px; }
     #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); }
   }
   /* Con la ficha del aliado abierta en celular/tablet, la ficha ocupa el sitio de la tarjeta */
@@ -1245,8 +1257,17 @@
   </div>
 </div>
 
-<script src="./js/rutas-cache.js?v=12" defer></script>
+<script src="./js/rutas-cache.js?v=12"></script>
 <script>
+(async function initializeMapPage() {
+try {
+  await window.mapEngineReady;
+} catch (error) {
+  console.error("No se pudo cargar el motor del mapa:", error);
+  mostrarFalloMapa("No se pudo cargar la librería del mapa. Verifica tu conexión a internet y recarga la página.");
+  return;
+}
+
 // Diagnóstico y depuración con parámetro URL (?debug=1)
 const urlParams = new URLSearchParams(window.location.search);
 const isDebugMode = urlParams.get("debug") === "1";
@@ -1344,10 +1365,14 @@ window.onerror = function(msg, url, lineNo, colNo, error) {
 /* =========================================================================
    1) ASSETS Y DATOS
    ========================================================================= */
-if (typeof maplibregl === "undefined") {
-  mostrarFalloMapa("No se pudo cargar la librería del mapa 3D. Verifica tu conexión a internet o recarga la página.");
-  throw new Error("MapLibre GL JS no está disponible");
+const mapboxAccessToken = window.MAPBOX_ACCESS_TOKEN;
+const useMapbox = typeof mapboxAccessToken === "string" && !!mapboxAccessToken.trim();
+const mapEngine = useMapbox ? window.mapboxgl : window.maplibregl;
+if (!mapEngine) {
+  mostrarFalloMapa("No se pudo cargar el motor del mapa 3D. Verifica tu conexión a internet o recarga la página.");
+  throw new Error("La librería del mapa no está disponible");
 }
+if (useMapbox) mapboxgl.accessToken = mapboxAccessToken.trim();
 const CATEGORY_ICONS_3D = {
   villa:     "hospedaje.png",
   cuatri:    "aventura-offroad.png",
@@ -1652,20 +1677,22 @@ function getBoundsTodos() {
   return [[minLng, minLat], [maxLng, maxLat]];
 }
 
-const supportsWebGL2 = typeof WebGL2RenderingContext !== "undefined" &&
-  !!document.createElement("canvas").getContext("webgl2");
-if (!supportsWebGL2) {
-  mostrarFalloMapa("Tu dispositivo o navegador no tiene soporte WebGL 2 para mapas 3D. Activa la aceleración gráfica o usa un navegador moderno.");
-  throw new Error("WebGL 2 no está soportado en este dispositivo");
+const webGLSupported = useMapbox
+  ? mapboxgl.supported && mapboxgl.supported()
+  : typeof WebGL2RenderingContext !== "undefined" &&
+    !!document.createElement("canvas").getContext("webgl2");
+if (!webGLSupported) {
+  mostrarFalloMapa("Tu dispositivo o navegador no tiene soporte WebGL para mapas 3D. Activa la aceleración gráfica o usa un navegador moderno.");
+  throw new Error("WebGL no está soportado en este dispositivo");
 }
 
 let mapLoaded = false;
 window.mapLoaded = false;
 let map = null;
 try {
-  map = new maplibregl.Map({
+  map = new mapEngine.Map({
     container: "map",
-    style: {
+    style: useMapbox ? "mapbox://styles/mapbox/satellite-streets-v12" : {
       version: 8,
       sources: {
         imagery: {
@@ -1693,14 +1720,14 @@ try {
     antialias: true
   });
   window.mapInstance = map;
-  logDebug("Instancia de MapLibre inicializada.");
+  logDebug("Instancia de Mapbox inicializada.");
 } catch (err) {
   mostrarFalloMapa("No se pudo iniciar el motor del mapa 3D. Revisa tu conexión a internet e inténtalo de nuevo.");
   throw err;
 }
 
 // Controles nativos en esquina superior derecha (separados de la barra #bar arriba a la izquierda)
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+map.addControl(new mapEngine.NavigationControl({ visualizePitch: true }), "top-right");
 
 // Detección proactiva de fallos de servicios del mapa (red, permisos o cuota)
 map.on("error", (e) => {
@@ -1765,7 +1792,7 @@ colibriEl.innerHTML = `<div class="colibri-stage">
 let colibri = null;
 function initColibri() {
   if (colibri) return;
-  colibri = new maplibregl.Marker({ element: colibriEl, anchor: "bottom", offset: [0, -52] })
+  colibri = new mapEngine.Marker({ element: colibriEl, anchor: "bottom", offset: [0, -52] })
     .setLngLat([firstStop.lng, firstStop.lat])
     .addTo(map);
   window.colibriInstance = colibri;
@@ -2529,7 +2556,7 @@ function initMarkers() {
       }
       const el = buildMarkerElement(s);
       markerElements[s.id] = el;
-      new maplibregl.Marker({ element: el, anchor: "bottom" })
+      new mapEngine.Marker({ element: el, anchor: "bottom" })
         .setLngLat([s.lng, s.lat])
         .addTo(map);
       aliadosMontados++;
@@ -2554,11 +2581,17 @@ function initMarkers() {
    7) CONFIGURACIÓN DE CAPAS 3D (DEM, FOG, DIORAMA Y RUTAS)
    ========================================================================= */
 function setup3DLayers() {
-  if (map.getSource("terrain-dem")) return;
+  const terrainSource = useMapbox ? "mapbox-dem" : "terrain-dem";
+  if (map.getSource(terrainSource)) return;
 
   // Relieve 3D de la Serranía del Perijá
   try {
-    map.addSource("terrain-dem", {
+    map.addSource(terrainSource, useMapbox ? {
+      type: "raster-dem",
+      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+      tileSize: 512,
+      maxzoom: 14
+    } : {
       type: "raster-dem",
       tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
       tileSize: 256,
@@ -2566,7 +2599,7 @@ function setup3DLayers() {
       encoding: "terrarium",
       attribution: "Elevation data © Mapzen, licensed under CC BY 4.0"
     });
-    map.setTerrain({ source: "terrain-dem", exaggeration: 1.65 });
+    map.setTerrain({ source: terrainSource, exaggeration: 1.65 });
   } catch(e) {}
 
   // Cielo y atmósfera dorada de la Serranía
@@ -2580,6 +2613,30 @@ function setup3DLayers() {
     });
   } catch(e) {}
 
+  if (useMapbox && map.getSource("composite") && !map.getLayer("manaure-3d-buildings")) {
+    try {
+      const firstSymbolLayer = map.getStyle().layers.find(layer =>
+        layer.type === "symbol" && layer.layout && layer.layout["text-field"]
+      );
+      map.addLayer({
+        id: "manaure-3d-buildings",
+        source: "composite",
+        "source-layer": "building",
+        filter: ["==", ["get", "extrude"], "true"],
+        type: "fill-extrusion",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": "#B7C7B8",
+          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 0],
+          "fill-extrusion-base": ["coalesce", ["to-number", ["get", "min_height"]], 0],
+          "fill-extrusion-opacity": 0.82
+        }
+      }, firstSymbolLayer && firstSymbolLayer.id);
+    } catch (error) {
+      console.error("[Manaure 3D] No se pudieron activar los edificios 3D:", error);
+      logDebug(`No se pudieron activar los edificios 3D: ${error.message}`, true);
+    }
+  }
 
   // Capa de Línea de Vuelo Luminous sobre las Calles
   try {
@@ -3011,6 +3068,7 @@ window.addEventListener("keydown", (e) => {
     document.body.appendChild(visor);
     show(srcs.indexOf(img.src) >= 0 ? srcs.indexOf(img.src) : 0);
   });
+})();
 })();
 </script>
 </body>

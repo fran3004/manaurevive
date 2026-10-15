@@ -4,10 +4,21 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 ## Mapa 3D
 
-El mapa de `public/brochure/mapa-3d.html` funciona sin claves ni archivos de
-configuración locales. Usa MapLibre GL JS, imágenes satelitales y etiquetas de
-Esri, y mosaicos públicos de elevación. Se necesita conexión a internet para
-cargar esas capas.
+El mapa de `public/brochure/mapa-3d.html` usa Mapbox GL JS con el estilo
+satelital, relieve 3D, niebla y controles Mapbox cuando está configurado el
+token. Para desarrollo local, define `MAPBOX_ACCESS_TOKEN` en `.env.local` o
+como variable de entorno y ejecuta `npm start`. El comando genera
+automáticamente un archivo de configuración local ignorado por Git. Si falta
+el token, el mapa sigue funcionando con MapLibre GL JS, imágenes satelitales
+públicas y elevación 3D.
+
+Para Vercel, agrega `MAPBOX_ACCESS_TOKEN` como variable de entorno del proyecto
+en **Settings → Environment Variables** y habilítala para Production, Preview y
+Development. El comando `npm run build` genera la configuración antes de crear
+el sitio. Después de guardar la variable, vuelve a desplegar para activar
+Mapbox. Sin la variable, la página sigue operativa usando el mapa de respaldo.
+Los tokens `pk` se entregan al navegador para autenticar Mapbox; restringe su
+URL permitida a los dominios de producción y previsualización de tu sitio.
 
 ## Available Scripts
 

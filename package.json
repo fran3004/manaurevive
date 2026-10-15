@@ -14,7 +14,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "configure-mapbox": "node scripts/configure-mapbox.js",
+    "prestart": "npm run configure-mapbox",
     "start": "react-scripts start",
+    "prebuild": "npm run configure-mapbox",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
