@@ -1,0 +1,3001 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manaure Vive · Mapa 3D Satelital Interactivo</title>
+
+<!-- Mapbox GL JS v3 (Soporte Mapbox 3D con Terreno y Relieve) -->
+<script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.7.0/dist/mapbox-gl.js"></script>
+<script src="./mapbox-config.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.7.0/dist/mapbox-gl.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --g: #0F3D2A;
+    --gold: #C5A059;
+    --or: #E8830C;
+    --ink: #17261F;
+    --mut: #5C6B62;
+    --card: #FFFFFF;
+    --ln: rgba(23, 38, 31, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--ink);
+    background: #0B1A12;
+    overflow: hidden;
+  }
+  #map { position: absolute; inset: 0; }
+  #map canvas { cursor: grab; }
+  #map:active canvas { cursor: grabbing !important; }
+
+  /* --- Barra de Control Superior Compacta --- */
+  #bar {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: min(400px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 16px;
+    padding: 10px 12px;
+    box-shadow: 0 14px 35px -8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    transition: all .25s ease;
+  }
+  .brand-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 13.5px;
+    color: var(--g);
+    flex-shrink: 0;
+    width: 100%;
+  }
+  .brand-chip img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .bar-toggle-btn {
+    background: rgba(15, 61, 42, 0.08);
+    border: 1px solid var(--ln);
+    border-radius: 8px;
+    color: var(--g);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all .2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .bar-toggle-btn:hover {
+    background: var(--g);
+    color: #fff;
+  }
+  .bar-collapsible-content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .grp { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .grp-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--mut);
+  }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pkg-btn {
+    font-family: inherit;
+    background: #fff;
+    border: 1.5px solid var(--ln);
+    border-radius: 10px;
+    padding: 8px 4px;
+    min-height: 48px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--ink);
+    transition: all .2s ease;
+  }
+  .pkg-btn:hover { border-color: var(--or); }
+  .pkg-btn.active { border-color: var(--or); background: #FFF7ED; box-shadow: 0 4px 12px rgba(232,131,12,.35); }
+  .pkg-btn strong { font-size: 11.5px; font-weight: 800; color: var(--g); }
+  .pkg-btn span { font-size: 9.5px; color: var(--mut); }
+  .ally-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+  .ally-head { display: flex; align-items: center; justify-content: space-between; padding: 2px; }
+  .ally-head strong { font-size: 13px; font-weight: 800; color: var(--g); }
+  .ally-x {
+    font-family: inherit; width: 44px; height: 44px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--ln); background: #fff; color: var(--g); font-size: 15px; font-weight: 800;
+  }
+  .ally-btn {
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--ln);
+    border-radius: 10px;
+    padding: 6px 10px 6px 6px;
+    min-height: 56px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .ally-btn:hover { border-color: var(--or); }
+  .ally-btn img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .ally-btn .ally-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .ally-btn b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ally-btn i { font-size: 10px; color: var(--mut); font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ally-btn .ally-alt { font-size: 11px; font-weight: 800; color: var(--g); flex-shrink: 0; }
+  /* TAREA_MAPA_05 Fase B — modos: en vuelo solo Recorrido; llegada con fotos en cuadrícula */
+  body[data-modo="volando"] .grp-nav,
+  body[data-modo="volando"] .grp-view,
+  body[data-modo="volando"] .btn-back { display: none; }
+  #panel.on .panel-imgs-strip { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; }
+  #panel.on .panel-imgs-strip img { width: 100%; height: 64px; cursor: zoom-in; }
+  #panel.expandida .panel-imgs-strip img { height: 96px; }
+  #panel.expandida .panel-desc-mini { display: block; }
+  .visorOverlay {
+    position: fixed; inset: 0; z-index: 99990; background: rgba(8,18,14,.92);
+    display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px;
+  }
+  .visorOverlay img { max-width: min(92vw, 900px); max-height: 82vh; border-radius: 12px; object-fit: contain; }
+  .visorOverlay button {
+    font-family: inherit; min-width: 44px; min-height: 44px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.12); color: #fff;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+  }
+  @media (max-height: 660px) {
+    #panel.on .panel-desc-mini {
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    #panel.on .panel-imgs-strip img { height: 56px; }
+  }
+  .grp .ctrl-group { gap: 8px; }
+  .grp-nav select { flex: 1 1 0; min-width: 0; }
+  #btnStart { flex: 1 1 auto; padding: 10px 14px; font-size: 13px; }
+  #btnPause, #btnStop { flex: 0 1 auto; opacity: .85; }
+  .btn-back { justify-content: center; border-top: 1px solid var(--ln); border-radius: 0 0 10px 10px; padding-top: 10px; }
+  #bar.collapsed {
+    padding: 6px 12px;
+  }
+  #bar.collapsed .bar-collapsible-content {
+    display: none !important;
+  }
+  #bar.collapsed .brand-chip {
+    border-right: none;
+    padding-right: 0;
+  }
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #bar select, #bar button {
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 11.5px;
+    border-radius: 9px;
+    border: 1.5px solid var(--ln);
+    padding: 6px 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: all .2s ease;
+    color: var(--ink);
+  }
+  #bar select:hover, #bar button:hover:not(:disabled) {
+    border-color: var(--g);
+    background: #FAFCFA;
+  }
+  #bar select.dest-select {
+    border-color: var(--gold);
+    background: #FFFCF7;
+    color: var(--g);
+    font-weight: 800;
+    max-width: 175px;
+    text-overflow: ellipsis;
+  }
+  #bar select#routeSel {
+    max-width: 185px;
+    text-overflow: ellipsis;
+  }
+  #bar select.dest-select:hover {
+    border-color: var(--or);
+  }
+  #bar button.primary {
+    background: var(--or);
+    color: #fff;
+    border-color: var(--or);
+    box-shadow: 0 4px 12px rgba(232, 131, 12, 0.35);
+  }
+  #bar button.primary:hover:not(:disabled) {
+    background: #d47206;
+    transform: translateY(-1px);
+  }
+  #bar button:focus-visible, #bar select:focus-visible, #bar input:focus-visible {
+    outline: 2px solid var(--or);
+    outline-offset: 2px;
+  }
+  #bar button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+  .voice-wrap, .guia-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--ink);
+    background: rgba(15, 61, 42, 0.05);
+    padding: 5px 10px;
+    border-radius: 999px;
+  }
+  .voice-wrap {
+    margin-left: auto;
+  }
+  .voice-wrap input, .guia-wrap input {
+    width: 32px;
+    height: 18px;
+    appearance: none;
+    background: #bbb;
+    border-radius: 99px;
+    position: relative;
+    cursor: pointer;
+    transition: .2s;
+  }
+  .voice-wrap input:checked, .guia-wrap input:checked { background: var(--or); }
+  .voice-wrap input::after, .guia-wrap input::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .2s;
+  }
+  .voice-wrap input:checked::after, .guia-wrap input:checked::after { left: 16px; }
+
+  .btn-back {
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 12.5px;
+    color: var(--g);
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: rgba(15, 61, 42, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .2s;
+  }
+  .btn-back:hover {
+    background: var(--g);
+    color: #fff;
+  }
+
+  /* --- Marcadores 3D con Edificios Isométricos Reales sobre el Terreno --- */
+  .landmark-marker {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: max-content;
+    pointer-events: auto !important;
+    z-index: 10;
+  }
+  .landmark-marker:hover, .landmark-marker.active {
+    z-index: 22 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Etiqueta Flotante sobre el edificio con soporte anti-colisión */
+  .landmark-badge-card {
+    background: rgba(255, 253, 248, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 999px;
+    padding: 3px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--gold);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    position: relative;
+    transition: opacity .25s ease, transform .25s ease, max-height .25s ease;
+    white-space: nowrap;
+    margin-bottom: -11px;
+    z-index: 5;
+    pointer-events: none;
+    transform-origin: bottom center;
+  }
+  .landmark-marker:hover .landmark-badge-card,
+  .landmark-marker.active .landmark-badge-card {
+    border-color: var(--or);
+    box-shadow: 0 0 0 3px rgba(232, 131, 12, 0.35), 0 8px 20px rgba(0,0,0,0.45);
+    background: #FFFDF8;
+  }
+
+  /* Ocultamiento dinámico cuando dos etiquetas colisionan en pantalla */
+  .landmark-marker.badge-collapsed .landmark-badge-card {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.5) translateY(12px) !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* El aliado activo siempre tiene prioridad visual absoluta y nunca se oculta */
+  .landmark-marker.active .landmark-badge-card {
+    opacity: 1 !important;
+    display: flex !important;
+    visibility: visible !important;
+    transform: scale(1.05) translateY(-2px) !important;
+    pointer-events: auto !important;
+    max-height: 100px !important;
+    z-index: 22 !important;
+  }
+  .landmark-marker.active .landmark-diorama-stage {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  .landmark-marker.active .landmark-diorama-model {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Clamping de bordes para evitar corte fuera de pantalla */
+  .landmark-marker.edge-left .landmark-badge-card {
+    transform-origin: bottom left;
+    transform: translateX(35%);
+  }
+  .landmark-marker.edge-right .landmark-badge-card {
+    transform-origin: bottom right;
+    transform: translateX(-35%);
+  }
+  .landmark-marker.edge-top .landmark-badge-card {
+    transform: translateY(80px);
+  }
+
+  .landmark-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .landmark-sub {
+    font-size: 8px;
+    font-weight: 800;
+    color: var(--mut);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .landmark-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--g);
+    line-height: 1.1;
+  }
+  .landmark-marker.active .landmark-title {
+    color: var(--or);
+  }
+
+  /* Escenario del Edificio 3D Isométrico */
+  .landmark-diorama-stage {
+    position: relative;
+    width: clamp(62px, 5.5vw, 92px);
+    height: clamp(62px, 5.5vw, 92px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  .landmark-diorama-model {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+    transition: transform .28s ease, filter .28s ease;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .landmark-marker:hover .landmark-diorama-model,
+  .landmark-marker.active .landmark-diorama-model {
+    transform: scale(1.08) translateY(-4px);
+    filter: drop-shadow(0 18px 24px rgba(232, 131, 12, 0.35)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
+  }
+
+  /* Sombra realista en el terreno */
+  .landmark-ground-shadow {
+    position: absolute;
+    bottom: 8px;
+    width: 78%;
+    height: 30%;
+    background: radial-gradient(ellipse at center, rgba(15, 61, 42, 0.5) 0%, rgba(0,0,0,0.35) 45%, transparent 75%);
+    border-radius: 50%;
+    transform: rotateX(55deg);
+    z-index: 1;
+    pointer-events: none;
+    transition: all .28s ease;
+  }
+  .landmark-marker.active .landmark-ground-shadow {
+    background: radial-gradient(ellipse at center, rgba(232, 131, 12, 0.55) 0%, rgba(15, 61, 42, 0.38) 45%, transparent 75%);
+    transform: rotateX(55deg) scale(1.15);
+  }
+
+  /* Anillo base de anclaje geográfico */
+  .landmark-anchor-ring {
+    position: absolute;
+    bottom: 4px;
+    width: 18px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    background: rgba(232, 131, 12, 0.3);
+    z-index: 0;
+    pointer-events: none;
+    transition: all .25s ease;
+  }
+  .landmark-marker.active .landmark-anchor-ring {
+    border-color: var(--or);
+    box-shadow: 0 0 10px var(--or);
+    transform: scale(1.35);
+  }
+
+  /* (off-* eliminado: los marcadores nacen centrados en su GPS exacto) */
+
+  /* Modo compacto (zoom alejado): tarjetas optimizadas con categoría + nombre siempre visibles */
+  body.compacto .landmark-diorama-stage { width: 46px; height: 46px; }
+  body.compacto .landmark-ground-shadow,
+  body.compacto .landmark-anchor-ring { display: none; }
+  body.compacto .landmark-badge-card { padding: 2px 7px; margin-bottom: -4px; }
+  body.compacto .landmark-title { font-size: 10px; line-height: 1.1; }
+  body.compacto .landmark-sub {
+    font-size: 7px;
+    letter-spacing: .04em;
+    margin-bottom: 1px;
+    display: block;
+  }
+
+  /* --- Marcador del Colibrí Volador y Posado Persistente --- */
+  .colibri-marker {
+    width: 68px;
+    height: 68px;
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto !important;
+    z-index: 25 !important;
+  }
+  .colibri-stage {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 10px 22px rgba(0,0,0,0.65));
+    transition: transform .2s ease;
+  }
+  .colibri-aura {
+    animation: colibriPulse 2.2s infinite ease-in-out;
+  }
+  @keyframes colibriPulse {
+    0% { transform: scale(0.92); opacity: 0.7; }
+    50% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(0.92); opacity: 0.7; }
+  }
+  .wing-group {
+    transform-box: fill-box;
+    transform-origin: 10% 90%;
+    transition: transform .15s ease-out;
+  }
+  .colibri-marker.flying .wing-group {
+    animation: wingBeat 0.15s infinite alternate ease-in-out;
+  }
+  .colibri-marker.landed .wing-group {
+    animation: none;
+    transform: rotate(20deg) scale(0.9, 0.65);
+  }
+  .colibri-marker.landed .colibri-stage {
+    animation: colibriFloat 2.4s infinite ease-in-out;
+  }
+  @keyframes wingBeat {
+    0% { transform: rotate(-25deg); }
+    100% { transform: rotate(25deg); }
+  }
+  @keyframes colibriFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Controles Nativos Mapbox (Esquina Superior Derecha, independiente de la barra #bar) */
+  .mapboxgl-ctrl-top-right {
+    top: 12px !important;
+    right: 12px !important;
+    z-index: 30;
+  }
+  .mapboxgl-ctrl-top-right .mapboxgl-ctrl {
+    margin: 0 0 8px 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    border: 1.5px solid rgba(197, 160, 89, 0.4);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* --- Panel de Información Compacto (NO INVASIVO: debajo de controles Mapbox en escritorio / Bottom Sheet en Móvil) --- */
+  #panel {
+    position: absolute;
+    top: 152px;
+    right: 14px;
+    width: min(265px, calc(100vw - 32px));
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 48px -10px rgba(0,0,0,0.55);
+    opacity: 0;
+    transform: translateY(-15px) scale(0.96);
+    pointer-events: none;
+    transition: opacity .3s cubic-bezier(0.16, 1, 0.3, 1), transform .3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1.5px solid rgba(197, 160, 89, 0.5);
+  }
+  #panel.on {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .panel-header-mini {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 6px;
+    border-bottom: 1px solid rgba(15, 61, 42, 0.08);
+  }
+  .panel-thumb-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #FFFDF8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1.5px solid var(--gold);
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  }
+  .panel-thumb-box .landmark-3d-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform: scale(1.18);
+  }
+  .panel-title-wrap {
+    flex: 1;
+    margin-left: 10px;
+  }
+  .panel-cat-chip {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: var(--or);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    display: block;
+  }
+  .panel-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    color: var(--g);
+    margin: 1px 0 0 0;
+    line-height: 1.2;
+  }
+  .panel-header-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .panel-close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--mut);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .panel-close-btn:hover { background: rgba(0,0,0,0.06); color: var(--ink); }
+
+  .panel-body-mini {
+    padding: 8px 10px 10px;
+  }
+  .panel-imgs-strip {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    margin-bottom: 7px;
+    scrollbar-width: none;
+  }
+  .panel-imgs-strip::-webkit-scrollbar { display: none; }
+  .panel-imgs-strip img {
+    width: 72px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .panel-desc-mini {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--mut);
+    margin-bottom: 8px;
+  }
+  .panel-meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .meta-chip {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #FAF8F4;
+    border: 1px solid #E6DEC8;
+    color: var(--g);
+  }
+  .panel-actions-mini {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .mini-act-btn {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 4px;
+    border-radius: 8px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+    border: none;
+    transition: all .2s;
+  }
+  .mini-act-btn.wp {
+    grid-column: span 2;
+    background: #25D366;
+    color: #fff;
+    font-size: 12px;
+    padding: 9px 4px;
+    box-shadow: 0 3px 10px rgba(37, 211, 102, 0.3);
+  }
+  .mini-act-btn.wp:hover { filter: brightness(0.95); }
+  .mini-act-btn.gps {
+    background: var(--or);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(232, 131, 12, 0.3);
+  }
+  .mini-act-btn.replay {
+    background: #FAF8F4;
+    border: 1px solid #D6D0C2;
+    color: var(--g);
+  }
+  .mini-act-btn.replay:hover {
+    background: #F0ECE1;
+  }
+  .mini-act-btn.replay.speaking {
+    background: #FFF3CD !important;
+    border-color: #E8830C !important;
+    color: #B95000 !important;
+    font-weight: 800;
+    animation: pulseMute 1.8s infinite ease-in-out;
+  }
+  @keyframes pulseMute {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232, 131, 12, 0.4); }
+    50% { box-shadow: 0 0 0 5px rgba(232, 131, 12, 0); }
+  }
+  .mini-act-btn.refly {
+    grid-column: span 2;
+    background: transparent;
+    border: 1px dashed #C9C2B2;
+    color: var(--mut);
+    font-size: 10.5px;
+  }
+  .mini-act-btn.refly:hover {
+    border-color: var(--or);
+    color: var(--or);
+    background: rgba(232, 131, 12, 0.06);
+  }
+
+  /* Barra de Navegación Secuencial del Recorrido */
+  .panel-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FAF8F4;
+    border-top: 1px solid rgba(15, 61, 42, 0.08);
+    padding: 6px 10px;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+  .nav-stop-btn {
+    background: #fff;
+    border: 1px solid #D6D0C2;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--g);
+    padding: 4px 5px;
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .nav-stop-btn:hover:not(:disabled) {
+    background: var(--g);
+    color: #fff;
+    border-color: var(--g);
+  }
+  .nav-stop-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: #F4F1EA;
+    color: #A39D8F;
+  }
+  .nav-stop-counter {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--g);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    white-space: nowrap;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+    line-height: 1.2;
+  }
+
+  /* Tirador ergonómico para Bottom Sheet Móvil */
+  .sheet-drag-handle {
+    display: none;
+    width: 44px;
+    height: 5px;
+    background: rgba(15, 61, 42, 0.22);
+    border-radius: 999px;
+    margin: 8px auto 2px;
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .sheet-drag-handle:hover {
+    background: var(--or);
+    transform: scaleX(1.15);
+  }
+
+  /* Estado de vuelo flotante y subtítulos narrados */
+  #status {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(15, 61, 42, 0.94);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12.5px;
+    z-index: 35;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all .25s ease;
+  }
+  #status.on {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .flight-pulse {
+    width: 8px;
+    height: 8px;
+    background: #FFC61A;
+    border-radius: 50%;
+    animation: flightBlink 0.8s infinite alternate;
+  }
+  @keyframes flightBlink {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.3); }
+  }
+
+  /* Antigravity: responsive movil/tablet (fusionado) */
+  @media (max-width: 820px) {
+    #bar {
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      padding: 7px 12px;
+      gap: 6px;
+      border-radius: 14px;
+    }
+    #bar select, #bar button {
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 8px;
+    }
+    #bar select.dest-select { max-width: 170px; }
+    .voice-wrap, .guia-wrap { padding: 4px 8px; font-size: 11px; }
+    .btn-back { font-size: 11px; padding: 5px 9px; }
+    #panel { top: 130px; right: 10px; width: min(260px, calc(100vw - 20px)); }
+  }
+@media (max-width: 600px) {
+    #bar {
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      padding: 8px 10px;
+      gap: 6px;
+      border-radius: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    /* Encabezado de la barra: Logo + Marca a la izquierda, Volver a la derecha */
+    .brand-chip {
+      padding-right: 6px;
+      border-right: none;
+      font-size: 13px;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .brand-chip img {
+      width: 24px;
+      height: 24px;
+    }
+    .btn-back {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    /* Grupo de controles: salta a fila completa (100% de ancho) */
+    .ctrl-group {
+      width: 100%;
+      flex-basis: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 2px;
+    }
+    #bar select.dest-select {
+      width: 100%;
+      max-width: 100%;
+      font-size: 12px;
+      padding: 7px 10px;
+      background: #FFFDF8;
+      border-color: var(--gold);
+    }
+    #routeSel {
+      flex: 1;
+      min-width: 130px;
+      font-size: 11px;
+      padding: 6px 8px;
+    }
+    #btnStart {
+      font-size: 11.5px;
+      padding: 6px 12px;
+      font-weight: 800;
+    }
+    #btnPause, #btnStop {
+      font-size: 11px;
+      padding: 6px 8px;
+    }
+    /* Ocultar botones inactivos cuando no hay vuelo para ahorrar espacio en móvil */
+    #btnPause:disabled, #btnStop:disabled {
+      display: none;
+    }
+    #btnVerTodo {
+      font-size: 11px;
+      padding: 6px 9px;
+    }
+    #bar button, #bar select { min-height: 44px; }
+    .mapboxgl-ctrl-top-right { top: auto !important; bottom: 12px !important; }
+    #bar {
+      left: 8px;
+      right: auto;
+      width: min(300px, calc(100vw - 16px));
+      padding: 8px 10px;
+      gap: 6px;
+      border-radius: 14px;
+    }
+    .grp { gap: 2px; }
+    .grp-label { font-size: 9px; }
+    .grp-nav select { width: 100%; max-width: none; font-size: 12px; }
+    #btnStart { flex: 1 1 100%; padding: 8px 12px; }
+    #btnPause, #btnStop { flex: 1 1 0; }
+    .grp-view .ctrl-group { flex-direction: row; flex-wrap: wrap; }
+    .guia-wrap, .voice-wrap { flex: 1 1 40%; justify-content: space-between; font-size: 10.5px; }
+
+    /* Toggles compactos al pie de la barra */
+    .guia-wrap, .voice-wrap {
+      font-size: 10.5px;
+      padding: 3px 8px;
+      gap: 4px;
+      margin-left: 0;
+    }
+    .voice-wrap { margin-left: 4px; }
+    .voice-wrap input, .guia-wrap input {
+      width: 26px;
+      height: 15px;
+    }
+    .voice-wrap input::after, .guia-wrap input::after {
+      width: 11px;
+      height: 11px;
+      top: 2px;
+      left: 2px;
+    }
+    .voice-wrap input:checked::after, .guia-wrap input:checked::after {
+      left: 13px;
+    }
+
+    /* Panel en móvil: Sheet deslizante desde abajo */
+    #panel {
+      position: fixed;
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-height: 48vh;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+      border: 1.5px solid var(--gold);
+      border-bottom: none;
+      transform: translateY(100%);
+      overflow-y: auto;
+      z-index: 50;
+      transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #panel.on {
+      transform: translateY(0);
+    }
+    .sheet-drag-handle {
+      display: block;
+    }
+    .panel-header-mini {
+      padding: 12px 14px 8px;
+    }
+    .panel-name { font-size: 16px; }
+    .panel-body-mini { padding: 10px 14px 18px; }
+    .panel-imgs-strip {
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .panel-imgs-strip img {
+      width: 96px;
+      height: 64px;
+      border-radius: 10px;
+    }
+    .panel-desc-mini {
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .mini-act-btn {
+      font-size: 12.5px;
+      padding: 10px 6px;
+      border-radius: 10px;
+    }
+    .mini-act-btn.wp {
+      padding: 12px 6px;
+      font-size: 13.5px;
+    }
+
+    /* Status flotante */
+    #status {
+      font-size: 11.5px;
+      padding: 6px 14px;
+      bottom: 16px;
+    }
+  }
+  /* TAREA_CLAUDE_08 — tarjeta de opciones abajo (naranja y blanco) */
+  #bar {
+    top: auto; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    width: auto; max-width: none; transform: none;
+    display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 4px;
+    padding: 0 8px 7px; border-radius: 16px; background: #fff; border: 1px solid var(--ln);
+    box-shadow: 0 -8px 28px -10px rgba(0, 0, 0, .45); transition: none;
+  }
+  #bar .bar-asa {
+    position: relative; flex: none; width: 100%; height: 16px; min-height: 0; padding: 0;
+    border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    display: grid; place-items: center; cursor: grab; touch-action: none;
+  }
+  #bar .bar-asa::before { content: ""; width: 38px; height: 4px; border-radius: 3px; background: rgba(23, 38, 31, .25); }
+  #bar .bar-asa::after { content: ""; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
+  #bar .bar-asa:hover { background: transparent; }
+  .bar-asa-txt { display: none; }
+  .bar-fila { display: flex; gap: 6px; }
+  #bar .bar-fila > button { min-height: 44px; border-radius: 12px; font-size: 13.5px; font-weight: 800; }
+  #bar #btnVolar { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bar .bar-ico { flex: none; width: 44px; padding: 0; font-size: 17px; color: var(--g); background: #fff; }
+  #bar #btnPause, #bar #btnStop { flex: 1; }
+  #bar #btnPause { color: var(--or); border-color: var(--or); }
+  #bar .bar-vuelo button:disabled { display: none; }
+
+  /* Vistas: solo una a la vez; en vuelo manda la fila Pausar/Detener */
+  #bar .bar-plegada, #bar .bar-vuelo, #bar #barContent, #bar #allyList { display: none; }
+  #bar[data-vista="plegada"] .bar-plegada { display: flex; }
+  #bar[data-vista="paquetes"] #barContent { display: flex; flex-direction: column; gap: 6px; }
+  #bar[data-vista="aliado"] #allyList { display: flex; max-height: min(360px, calc(100vh - 60px)); }
+  body[data-vuelo="1"] #bar .bar-plegada, body[data-vuelo="1"] #bar #barContent, body[data-vuelo="1"] #bar #allyList { display: none; }
+  body[data-vuelo="1"] #bar:not([data-vista="min"]) .bar-vuelo { display: flex; }
+
+  /* Bajada: queda solo una pestaña "⌃ Opciones" */
+  #bar[data-vista="min"] { left: 50%; right: auto; width: auto; transform: translateX(-50%); padding: 0 6px; border-radius: 999px; }
+  #bar[data-vista="min"] .bar-asa { height: 44px; padding: 0 12px; display: flex; align-items: center; }
+  #bar[data-vista="min"] .bar-asa::before { display: none; }
+  #bar[data-vista="min"] .bar-asa::after { top: 0; }
+  #bar[data-vista="min"] .bar-asa-txt { display: inline; font-size: 13px; font-weight: 800; color: var(--g); }
+
+  /* Paquetes */
+  .bar-cab { display: flex; align-items: center; gap: 8px; padding: 0 2px; font-size: 12.5px; font-weight: 700; color: var(--mut); }
+  .bar-cab > span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-version { font-size: 11px; font-weight: 800; color: #fff; background: var(--or); border-radius: 6px; padding: 1px 6px; }
+  #bar .bar-cab .btn-back {
+    position: relative; margin: 0; min-height: 36px; padding: 0 10px; border: 0; border-radius: 10px;
+    font-size: 12px; background: rgba(15, 61, 42, .07); display: inline-flex; align-items: center;
+  }
+  #bar .bar-cab .btn-back::before { content: ""; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
+  #bar .pkg-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  #bar .pkg-btn {
+    min-height: 48px; padding: 5px 9px; border: 1px solid var(--ln); border-radius: 12px; background: #fff;
+    align-items: flex-start; text-align: left; min-width: 0; box-shadow: none;
+  }
+  #bar .pkg-btn:hover:not(.active) { border-color: var(--or); background: #FFF7ED; }
+  #bar .pkg-btn strong, #bar .pkg-btn span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bar .pkg-btn strong { font-size: 13px; font-weight: 800; color: var(--ink); }
+  #bar .pkg-btn span { font-size: 11px; font-weight: 600; color: var(--mut); }
+  #bar .pkg-btn.active, #bar .pkg-btn.active:hover { background: var(--or); border-color: var(--or); box-shadow: 0 4px 12px rgba(232, 131, 12, .35); }
+  #bar .pkg-btn.active strong, #bar .pkg-btn.active span { color: #fff; }
+  #bar .pkg-btn.pkg-aliado { border: 1.5px solid var(--or); }
+  .bar-ajustes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; }
+  .bar-ajustes .guia-wrap, .bar-ajustes .voice-wrap {
+    flex: none; margin: 0; min-height: 44px; padding: 0 8px; gap: 4px; justify-content: space-between;
+    border: 1px solid var(--ln); border-radius: 12px; background: #fff; font-size: 12px; cursor: pointer; min-width: 0;
+  }
+  .bar-ajustes label span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-ajustes input { flex: none; width: 32px; height: 18px; }
+  .bar-ajustes input::after { width: 14px; height: 14px; top: 2px; left: 2px; }
+  .bar-ajustes input:checked::after { left: 16px; }
+  #bar #btnVerTodo { min-height: 44px; padding: 0 12px; border-radius: 12px; font-size: 12.5px; font-weight: 800; color: var(--g); white-space: nowrap; }
+  #bar .ally-list { flex-direction: column; }
+
+  /* Lo que estaba abajo se reubica para no quedar bajo la tarjeta */
+  .mapboxgl-ctrl-bottom-left { top: 0; bottom: auto; }
+  #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 90px); }
+
+  @media (min-width: 601px) {
+    #bar { left: 16px; right: auto; width: min(400px, calc(100% - 32px)); bottom: 16px; }
+    #bar[data-vista="min"] { left: 16px; transform: none; width: auto; }
+  }
+  @media (max-width: 380px) {
+    #bar .pkg-btn { padding: 5px 6px; }
+    #bar .pkg-btn span { font-size: 10px; }
+    .bar-ajustes .guia-wrap, .bar-ajustes .voice-wrap { padding: 0 6px; gap: 3px; font-size: 11px; }
+    .bar-ajustes input { width: 28px; height: 16px; }
+    .bar-ajustes input::after { width: 12px; height: 12px; }
+    .bar-ajustes input:checked::after { left: 14px; }
+    #bar #btnVerTodo { padding: 0 8px; font-size: 11.5px; }
+  }
+  /* Muy estrecho (320 px o el recuadro del brochure en celular pequeño): paquetes a 2 columnas y "Ver todo" en su fila */
+  @media (max-width: 340px) {
+    #bar .pkg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #bar .pkg-btn { min-height: 44px; }
+    .bar-ajustes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    #bar #btnVerTodo { grid-column: 1 / -1; }
+  }
+  @media (max-width: 600px) {
+    .mapboxgl-ctrl-top-right { top: 8px !important; bottom: auto !important; }
+    .mapboxgl-ctrl-bottom-right { top: 0; bottom: auto; right: 52px; }
+    #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); }
+  }
+  /* Con la ficha del aliado abierta en celular/tablet, la ficha ocupa el sitio de la tarjeta */
+  @media (max-width: 820px) {
+    body[data-modo="llegada"] #bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Tarjeta de opciones abajo: plegada → paquetes / un aliado; en vuelo, Pausar/Detener; se puede bajar a una pestaña -->
+<div id="bar" data-vista="plegada" role="region" aria-label="Opciones del mapa">
+  <button type="button" class="bar-asa" id="barAsa" aria-label="Bajar opciones del mapa"><span class="bar-asa-txt">⌃ Opciones</span></button>
+  <div class="bar-fila bar-plegada">
+    <button type="button" id="btnVolar" class="primary">▶ Volar: Completo · 10</button>
+    <button type="button" id="btnAliado" class="bar-ico" aria-label="Volar directo a un aliado" title="Volar directo a un aliado">📍</button>
+    <button type="button" id="btnToggleBar" class="bar-ico" aria-label="Ver paquetes y ajustes" title="Paquetes y ajustes">⌃</button>
+  </div>
+  <div class="bar-fila bar-vuelo">
+    <button id="btnPause" disabled>⏸ Pausar</button>
+    <button id="btnStop" disabled>■ Detener</button>
+  </div>
+  <div class="bar-collapsible-content" id="barContent">
+    <div class="bar-cab">
+      <span>¿Qué quieres volar?</span>
+      <span class="bar-version" title="Versión del mapa">v18</span>
+      <a href="./index.html#mapa-3d-seccion" target="_top" class="btn-back">↩ Brochure</a>
+    </div>
+    <select id="routeSel" class="sr-only" title="Seleccionar Recorrido Turístico"></select>
+    <select id="destDirectSel" class="dest-select sr-only" title="Elegir y volar directamente a un aliado">
+        <option value="">🦅 Volar directo a un Aliado...</option>
+        <option value="villa">01 · Villa Adelaida (Entrada a Manaure)</option>
+        <option value="cuatri">02 · Cuatri Tours</option>
+        <option value="arepas">10 · La Casa de las Arepas</option>
+        <option value="photours">08 · PHOtours</option>
+        <option value="aventura">03 · Manaure Aventura</option>
+        <option value="pinos">07 · Los Pinos</option>
+        <option value="absolom">06 · Casita de la Mora</option>
+        <option value="coruscans">09 · El Coruscans</option>
+        <option value="mashiramo">04 · Mashiramo Glamping</option>
+        <option value="metallura">05 · Metallura Nature</option>
+      </select>
+    <div class="pkg-grid" id="pkgGrid" role="group" aria-label="Paquetes de recorrido"></div>
+    <div class="bar-ajustes">
+      <label class="guia-wrap" title="Seguimiento de cámara estilo Google Maps detrás del colibrí"><span>Vista guía</span><input type="checkbox" id="guiaChk" checked></label>
+      <label class="voice-wrap" title="Narración del colibrí"><span>Narración</span><input type="checkbox" id="voiceChk" checked></label>
+      <button type="button" id="btnVerTodo" title="Encuadrar y ver todos los 10 sitios en el mapa">◎ Ver todo</button>
+    </div>
+  </div>
+  <div class="ally-list" id="allyList"></div>
+  <button id="btnStart" class="sr-only" tabindex="-1" aria-hidden="true">▶ Iniciar Vuelo</button>
+</div>
+
+<!-- Estado de vuelo -->
+<div id="status"></div>
+
+<!-- Panel de Información Compacto (Esquina Superior Derecha / Bottom Sheet en Móvil) -->
+<div id="panel">
+  <div class="sheet-drag-handle" id="sheetDragHandle" title="Tocar o deslizar para cerrar"></div>
+  <div class="panel-header-mini">
+    <div class="panel-thumb-box" id="panelIllusBox"></div>
+    <div class="panel-title-wrap">
+      <span class="panel-cat-chip" id="panelCat"></span>
+      <h3 class="panel-name" id="panelName"></h3>
+    </div>
+    <div class="panel-header-btns">
+      <button class="panel-close-btn" id="panelClose" title="Cerrar panel">×</button>
+    </div>
+  </div>
+  <div class="panel-body-mini">
+    <div class="panel-imgs-strip" id="panelImgs"></div>
+    <p class="panel-desc-mini" id="panelText"></p>
+    <div class="panel-meta-chips">
+      <span class="meta-chip" id="panelMetaAlt"></span>
+      <span class="meta-chip" id="panelMetaLoc"></span>
+    </div>
+    <div class="panel-actions-mini">
+      <a class="mini-act-btn wp" id="btnWhatsapp" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="mini-act-btn gps" id="btnGps" target="_blank" rel="noopener">Ruta GPS</a>
+      <button class="mini-act-btn replay" id="btnReplayVoice" title="Escuchar o silenciar narración del colibrí">🔊 Escuchar narración</button>
+      <button class="mini-act-btn refly" id="btnFlyHereAgain">🦅 Volar aquí de nuevo</button>
+    </div>
+  </div>
+  <div class="panel-nav-bar" id="panelNavBar">
+    <button class="nav-stop-btn prev" id="btnPrevStop" title="Parada anterior del itinerario">← Anterior</button>
+    <span class="nav-stop-counter" id="navStopCounter">1 / 10</span>
+    <button class="nav-stop-btn next" id="btnNextStop" title="Siguiente parada del itinerario">Siguiente →</button>
+  </div>
+</div>
+
+<script src="./js/rutas-cache.js?v=12" defer></script>
+<script>
+// Diagnóstico y depuración con parámetro URL (?debug=1)
+const urlParams = new URLSearchParams(window.location.search);
+const isDebugMode = urlParams.get("debug") === "1";
+
+function initDebugHUD() {
+  if (!isDebugMode) return;
+  const hud = document.createElement("div");
+  hud.id = "debugHUD";
+  hud.style.cssText = "position:fixed;top:14px;left:14px;z-index:999999;background:rgba(11,26,18,0.95);border:1.5px solid #FFC61A;border-radius:12px;padding:12px 14px;color:#FAF8F4;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;max-width:320px;max-height:80vh;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,0.7);line-height:1.4;pointer-events:auto;";
+  hud.innerHTML = `
+    <div style="font-weight:bold;color:#FFC61A;border-bottom:1px solid rgba(255,198,26,0.3);padding-bottom:4px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+      <span>🛠️ DIAGNÓSTICO MANAURE 3D</span>
+      <span id="debugHudTimer" style="font-size:10px;color:#A9DFBF;">0s</span>
+    </div>
+    <div style="margin-bottom:4px;"><strong style="color:#FFD700;">Estado:</strong> <span id="debugHudStatus" style="color:#2ECC71;">Iniciando Mapbox GL...</span></div>
+    <div style="margin-bottom:4px;"><strong style="color:#FFD700;">Aliados:</strong> <span id="debugHudAllies" style="color:#FAF8F4;">0 / 10</span></div>
+    <div style="font-weight:bold;color:#FFD700;margin-top:6px;margin-bottom:2px;">Eventos & Logs:</div>
+    <div id="debugHudLogs" style="font-size:10px;color:#A9DFBF;display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:6px;"></div>
+  `;
+  document.body.appendChild(hud);
+
+  let seconds = 0;
+  setInterval(() => {
+    seconds++;
+    const t = document.getElementById("debugHudTimer");
+    if (t) t.textContent = `${seconds}s`;
+  }, 1000);
+}
+
+function logDebug(msg, isError = false) {
+  if (!isDebugMode) return;
+  const logs = document.getElementById("debugHudLogs");
+  if (logs) {
+    const item = document.createElement("div");
+    item.style.color = isError ? "#FF6B6B" : "#A9DFBF";
+    item.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logs.appendChild(item);
+    logs.scrollTop = logs.scrollHeight;
+  }
+}
+
+// Pantalla de contingencia visible si falla el mapa o token (nunca dejar fondo verde vacío)
+function mostrarFalloMapa(msg) {
+  try {
+    const existing = document.getElementById("mapaErrorOverlay");
+    if (existing) return;
+    const d = document.createElement("div");
+    d.id = "mapaErrorOverlay";
+    d.setAttribute("role", "alert");
+    d.style.cssText = "position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;background:radial-gradient(circle at center, #132E20 0%, #0B1A12 100%);color:#fff;padding:28px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;";
+    d.innerHTML = `
+      <div style="font-size:48px;line-height:1;margin-bottom:4px;">🗺️</div>
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:#FFC61A;margin:0;">No se pudo cargar el mapa 3D</h2>
+      <p style="font-size:14px;color:#FAF8F4;max-width:440px;line-height:1.6;margin:0;opacity:0.9;">${msg}</p>
+      <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+        <button onclick="location.reload()" style="background:#E8830C;color:#fff;border:none;border-radius:999px;padding:12px 26px;font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 4px 15px rgba(232,131,12,0.4);transition:transform 0.2s;">
+          🔄 Recargar página
+        </button>
+        <a href="../index.html" style="background:transparent;color:#FAF8F4;border:1.5px solid rgba(255,255,255,0.3);border-radius:999px;padding:12px 22px;font-weight:600;font-size:13.5px;text-decoration:none;">
+          ← Volver al Brochure
+        </a>
+      </div>
+    `;
+    const mapContainer = document.getElementById("map") || document.body;
+    mapContainer.appendChild(d);
+    logDebug(`[FALLO CRÍTICO] ${msg}`, true);
+    if (isDebugMode) {
+      const s = document.getElementById("debugHudStatus");
+      if (s) { s.textContent = "Error al cargar mapa"; s.style.color = "#FF6B6B"; }
+    }
+  } catch (e) {
+    console.error("Error mostrando pantalla de fallo:", e);
+  }
+}
+
+// Iniciar HUD de diagnóstico inmediatamente si ?debug=1
+initDebugHUD();
+logDebug("Modo diagnóstico activado.");
+
+// Control global de errores para que ningún fallo futuro sea silencioso
+window.onerror = function(msg, url, lineNo, colNo, error) {
+  const errText = `⚠️ Error: ${msg} (Línea ${lineNo})`;
+  console.error(errText, error);
+  logDebug(errText, true);
+  const statusEl = document.getElementById("status");
+  if (statusEl) {
+    statusEl.innerHTML = `<span>${errText}</span>`;
+    statusEl.classList.add("on");
+    statusEl.style.color = "#FFD700";
+    statusEl.style.borderColor = "#E74C3C";
+  }
+  return false;
+};
+
+/* =========================================================================
+   1) ASSETS Y DATOS
+   ========================================================================= */
+if (typeof mapboxgl === "undefined") {
+  mostrarFalloMapa("No se pudo cargar la librería Mapbox GL JS. Por favor verifica tu conexión a internet o recarga la página.");
+  throw new Error("Mapbox GL JS no está disponible");
+}
+const mapboxAccessToken = window.MAPBOX_ACCESS_TOKEN;
+if (typeof mapboxAccessToken !== "string" || !mapboxAccessToken.trim()) {
+  mostrarFalloMapa("El mapa 3D requiere configurar un token público de Mapbox. Consulta el README para ver los pasos.");
+  throw new Error("Falta configurar MAPBOX_ACCESS_TOKEN");
+}
+mapboxgl.accessToken = mapboxAccessToken.trim();
+
+const CATEGORY_ICONS_3D = {
+  villa:     "hospedaje.png",
+  cuatri:    "aventura-offroad.png",
+  arepas:    "gastronomia.png",
+  photours:  "fotografia.png",
+  aventura:  "parapente.png",
+  pinos:     "jardin.png",
+  absolom:   "dulceria.png",
+  coruscans: "cafe.png",
+  mashiramo: "glamping.png",
+  metallura: "ecoturismo.png"
+};
+
+const ILLUSTRATIONS = {
+  villa:     `<img src="../assets/iconos-3d/hospedaje.png" alt="Hospedaje Villa Adelaida" class="landmark-3d-img">`,
+  cuatri:    `<img src="../assets/iconos-3d/aventura-offroad.png" alt="Aventura Off-Road Cuatrimotos" class="landmark-3d-img">`,
+  aventura:  `<img src="../assets/iconos-3d/parapente.png" alt="Parapente y Camping Manaure Aventura" class="landmark-3d-img">`,
+  mashiramo: `<img src="../assets/iconos-3d/glamping.png" alt="Glamping de Altura Mashiramo" class="landmark-3d-img">`,
+  metallura: `<img src="../assets/iconos-3d/ecoturismo.png" alt="Ecoturismo Científico Metallura" class="landmark-3d-img">`,
+  absolom:   `<img src="../assets/iconos-3d/dulceria.png" alt="Agroturismo y Dulcería ABSOLOM" class="landmark-3d-img">`,
+  pinos:     `<img src="../assets/iconos-3d/jardin.png" alt="Jardín Botánico Los Pinos" class="landmark-3d-img">`,
+  photours:  `<img src="../assets/iconos-3d/fotografia.png" alt="Turismo Fotográfico PHOtours" class="landmark-3d-img">`,
+  coruscans: `<img src="../assets/iconos-3d/cafe.png" alt="Posada y Café El Coruscans" class="landmark-3d-img">`,
+  arepas:    `<img src="../assets/iconos-3d/gastronomia.png" alt="Gastronomía Criolla La Casa de las Arepas" class="landmark-3d-img">`
+};
+
+/* Coordenadas precisas de los 10 Aliados */
+const STOPS = {
+  villa: {
+    id: "villa",
+    num: "01",
+    short: "Villa Adelaida",
+    name: "01 · Villa Adelaida",
+    cat: "Hospedaje, Gastronomía y Balneario",
+    catTag: "Hospedaje & Balneario",
+    catType: "gastro",
+    icon: "hospedaje.png",
+    lat: 10.39455, lng: -73.018593, alt: 750, zoom: 16.8, bearing: -10,
+    text: "Sede anfitriona y punto de partida de la red. Casa de campo campestre, pozas de agua cristalina del Río Manaure, auténtica cocina criolla a la leña y cabañas con hospitalidad familiar.",
+    altText: "750 m.s.n.m. · Clima templado y balneario natural",
+    locText: "Km 0 Entrada a Manaure, Sector La Rosita",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/villa-adelaida-01.jpg",
+      "../assets/convenios/villa-adelaida-comida.jpg",
+      "../assets/convenios/villa-adelaida-02.jpg"
+    ]
+  },
+  cuatri: {
+    id: "cuatri",
+    num: "02",
+    short: "Cuatri Tours",
+    name: "02 · Cuatri Tours Manaure",
+    cat: "Aventura Off-Road 4x4",
+    catTag: "Aventura 4x4",
+    catType: "aventura",
+    icon: "aventura-offroad.png",
+    lat: 10.392508, lng: -73.025482, alt: 850, zoom: 16.8, bearing: -10,
+    text: "Rutas guiadas en cuatrimotos todoterreno por trochas agrestes, cañones y cruces de río con panorámicas de 360 grados sobre el valle y las montañas del Perijá.",
+    altText: "850 m.s.n.m. · Flota 4x4 con guía y protección",
+    locText: "Calle 3 # 3-80, Manaure (Cesar)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/cuatrimoto-flota.webp",
+      "../assets/convenios/cuatri-tours-01.jpg",
+      "../assets/convenios/cuatrimoto-mirador.webp"
+    ]
+  },
+  arepas: {
+    id: "arepas",
+    num: "10",
+    short: "Casa de las Arepas",
+    name: "10 · La Casa de las Arepas",
+    cat: "Gastronomía Criolla al Carbón",
+    catTag: "Gastronomía",
+    catType: "gastro",
+    icon: "gastronomia.png",
+    lat: 10.393375, lng: -73.026852, alt: 750, zoom: 17.0, bearing: -10,
+    text: "Arepas tradicionales de maíz cariaco seleccionadas, molidas en piedra y asadas lentamente al carbón de leña en el corazón urbano de Manaure.",
+    altText: "750 m.s.n.m. · Fogón tradicional al carbón",
+    locText: "Calle 4, junto a Los 3 Monitos, Manaure (Cesar)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/casa-arepas-01.jpg",
+      "../assets/convenios/gastronomia-casa-arepas.webp",
+      "../assets/convenios/casa-arepas-02.jpg"
+    ]
+  },
+  photours: {
+    id: "photours",
+    num: "08",
+    short: "PHOtours",
+    name: "08 · PHOtours",
+    cat: "Turismo Fotográfico y Cañones",
+    catTag: "Fotografía",
+    catType: "foto",
+    icon: "fotografia.png",
+    lat: 10.39438, lng: -73.02070, alt: 950, zoom: 17.2, bearing: 80,
+    text: "Safaris fotográficos en pozas y cascadas vírgenes escondidas en el cañón, captura de la hora dorada sobre los farallones y columpio infinito sobre el abismo.",
+    altText: "950 m.s.n.m. · Cascadas vírgenes y cañón",
+    locText: "Cañón de Manaure (10.39438° N, 73.02070° O)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/photours-expedicion-01.webp",
+      "../assets/convenios/photours-cascada.webp",
+      "../assets/convenios/photours-01.jpg"
+    ]
+  },
+  aventura: {
+    id: "aventura",
+    num: "03",
+    short: "Manaure Aventura",
+    name: "03 · Manaure Aventura",
+    cat: "Vuelo Libre en Parapente y Camping",
+    catTag: "Parapente",
+    catType: "aventura",
+    icon: "parapente.png",
+    lat: 10.379514, lng: -73.011141, alt: 1450, zoom: 16.5, bearing: 30,
+    text: "Despegues en parapente tándem con pilotos certificados sobre el majestuoso cañón del Perijá, zona de camping panorámico bajo las estrellas y fogatas nocturnas.",
+    altText: "1.450 m.s.n.m. · Despegue oficial y zona de camping",
+    locText: "Cerro de La Cruz, Manaure (Cesar)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/parapente-tandem-canon.webp",
+      "../assets/convenios/manaure-aventura-camping.webp",
+      "../assets/convenios/manaure-aventura-01.jpg"
+    ]
+  },
+  pinos: {
+    id: "pinos",
+    num: "07",
+    short: "Los Pinos",
+    name: "07 · Los Pinos Manaure",
+    cat: "Jardín Botánico y Arte Topiario",
+    catTag: "Jardín Botánico",
+    catType: "naturaleza",
+    icon: "jardin.png",
+    lat: 10.370959, lng: -72.979163, alt: 1320, zoom: 16.5, bearing: -15,
+    text: "Galería viva al aire libre de esculturas vegetales modeladas pacientemente a mano en pinos y setos, con senderos florales y mirador panorámico sobre el Valle del Cesar.",
+    altText: "1.320 m.s.n.m. · Arte topiario y mirador botánico",
+    locText: "Vía Vereda El Cinco, Manaure",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/los-pinos-01.jpg",
+      "../assets/convenios/serrania-topiarios.webp",
+      "../assets/convenios/los-pinos-02.jpg"
+    ]
+  },
+  absolom: {
+    id: "absolom",
+    num: "06",
+    short: "Casita de la Mora",
+    name: "06 · ABSOLOM · Casita de la Mora",
+    cat: "Agroturismo y Dulcería Artesanal",
+    catTag: "Dulcería Rural",
+    catType: "gastro",
+    icon: "dulceria.png",
+    lat: 10.365297, lng: -72.973752, alt: 1150, zoom: 16.5, bearing: -20,
+    text: "Cultivo agroecológico de mora silvestre de altura, catas de dulces en almíbar, mermeladas puras sin conservantes y vino campesino artesanal en un entorno tradicional.",
+    altText: "1.150 m.s.n.m. · Finca agroecológica y dulcería",
+    locText: "Vereda El Cinco (10.36529° N, 72.97375° O)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/absolom-moras-macro.webp",
+      "../assets/convenios/foto-finca-mora-collage.jpg",
+      "../assets/convenios/gastronomia-local.webp"
+    ]
+  },
+  coruscans: {
+    id: "coruscans",
+    num: "09",
+    short: "El Coruscans",
+    name: "09 · El Coruscans",
+    cat: "Posada Rural y Café de Origen",
+    catTag: "Café de Origen",
+    catType: "hospedaje",
+    icon: "cafe.png",
+    lat: 10.364111, lng: -72.977867, alt: 1250, zoom: 16.5, bearing: -20,
+    text: "Posada de descanso entre cafetales bajo sombra natural. Cata de café especial de altura recién tostado, senderismo campesino y avistamiento de aves.",
+    altText: "1.250 m.s.n.m. · Finca cafetera y posada rural",
+    locText: "Vereda El Cinco, Serranía del Perijá",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/coruscans-01.jpg",
+      "../assets/convenios/coruscans-cafe.jpg",
+      "../assets/convenios/coruscans-02.jpg"
+    ]
+  },
+  mashiramo: {
+    id: "mashiramo",
+    num: "04",
+    short: "Mashiramo Glamping",
+    name: "04 · Mashiramo Glamping",
+    cat: "Glamping de Alta Montaña",
+    catTag: "Glamping",
+    catType: "hospedaje",
+    icon: "glamping.png",
+    lat: 10.367323, lng: -72.954912, alt: 2400, zoom: 16.5, bearing: 160,
+    text: "Exclusivos domos geodésicos en pleno bosque de niebla a 2.400 metros de altura. Jacuzzis climatizados, terrazas privadas de madera y observación astronómica sin contaminación lumínica.",
+    altText: "2.400 m.s.n.m. · Bosque de niebla y clima frío",
+    locText: "Vereda El Cinco (10.36732° N, 72.95491° O)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/mashiramo-real-domo.webp",
+      "../assets/convenios/mashiramo-real-terraza.webp",
+      "../assets/convenios/mashiramo-real-noche.webp"
+    ]
+  },
+  metallura: {
+    id: "metallura",
+    num: "05",
+    short: "Metallura Nature",
+    name: "05 · Metallura Nature Tourism",
+    cat: "Ecoturismo Científico y Páramo",
+    catTag: "Ecoturismo",
+    catType: "naturaleza",
+    icon: "ecoturismo.png",
+    lat: 10.366944, lng: -72.897472, alt: 3200, zoom: 14.8, bearing: -15,
+    text: "Expediciones biológicas guiadas al Páramo de Sabana Rubia en busca del mítico Colibrí del Perijá (Metallura iracunda), frailejones andinos y senderos de alta montaña.",
+    altText: "3.200 m.s.n.m. · Casa de Vidrio, páramo virgen",
+    locText: "Casa de Vidrio, Vereda Sabana Rubia (10.366944° N, 72.897472° O)",
+    phone: "573012706114",
+    images: [
+      "../assets/convenios/metallura-01.jpg",
+      "../assets/convenios/serrania-perija-frailejones.webp",
+      "../assets/convenios/metallura-02.jpg"
+    ]
+  }
+};
+
+const ROUTES = {
+  todos:      { label:"Todos los 10 Aliados (Recorrido Completo)", stops:["villa","cuatri","arepas","photours","aventura","pinos","absolom","coruscans","mashiramo","metallura"] },
+  adrenalina: { label:"Ruta Adrenalina en la Serranía (1 día)", stops:["villa","cuatri","arepas","aventura","photours"] },
+  naturaleza: { label:"Ruta Naturaleza y Silencio (2 días)", stops:["villa","mashiramo","metallura","pinos","coruscans"] },
+  sabor:      { label:"Ruta Sabor y Tradición (1 día)", stops:["villa","cuatri","arepas","absolom","coruscans"] },
+  foto:       { label:"Ruta Expedición del Fotógrafo (2 días)", stops:["villa","photours","pinos","metallura","mashiramo"] }
+};
+
+// Rutas precomputadas siguiendo exactamente las calles y carreteras de Manaure
+var PRECOMPUTED_ROUTES = window.PRECOMPUTED_ROUTES || {}; // llega por js/rutas-cache.js (defer); sin él se usa curva
+
+
+/* =========================================================================
+   2) ELEMENTOS DOM Y VARIABLES DE ESTADO GLOBALES
+   ========================================================================= */
+const firstStop = STOPS.villa;
+let currentSelectedStop = firstStop;
+const markerElements = {};
+let animToken = 0, paused = false;
+
+const $panel = document.getElementById("panel");
+const $status = document.getElementById("status");
+const btnStart = document.getElementById("btnStart");
+const btnPause = document.getElementById("btnPause");
+const btnStop  = document.getElementById("btnStop");
+const voiceChk = document.getElementById("voiceChk");
+const sel = document.getElementById("routeSel");
+const destDirectSel = document.getElementById("destDirectSel");
+
+Object.entries(ROUTES).forEach(([id,r]) => sel.add(new Option(r.label, id)));
+
+/* =========================================================================
+   3) INICIALIZACIÓN DEL MAPA 3D SATELITAL CON RELIEVE Y MODELOS
+   ========================================================================= */
+function validarAliado(s) {
+  if (!s || typeof s !== "object") {
+    console.error("[Manaure 3D] ⚠️ Registro de aliado nulo o no válido");
+    logDebug("⚠️ Aliado nulo o no válido", true);
+    return false;
+  }
+  if (typeof s.lat !== "number" || typeof s.lng !== "number" || isNaN(s.lat) || isNaN(s.lng)) {
+    console.error(`[Manaure 3D] ⚠️ Aliado "${s.id || 'desconocido'}" tiene coordenadas no numéricas o NaN: lat=${s.lat}, lng=${s.lng}`);
+    logDebug(`⚠️ Coordenadas inválidas en "${s.id}": lat=${s.lat}, lng=${s.lng}`, true);
+    return false;
+  }
+  if (s.lat === 0 && s.lng === 0) {
+    console.error(`[Manaure 3D] ⚠️ Aliado "${s.id}" tiene coordenadas 0,0 (nulas)`);
+    logDebug(`⚠️ Coordenadas (0,0) en "${s.id}"`, true);
+    return false;
+  }
+  // Coordenadas invertidas o fuera del cuadrante regional de Manaure, Cesar
+  if (s.lat < 0 || s.lng > 0) {
+    console.error(`[Manaure 3D] ⚠️ Aliado "${s.id}" tiene coordenadas invertidas o signo incorrecto: lat=${s.lat}, lng=${s.lng}`);
+    logDebug(`⚠️ Coordenadas invertidas en "${s.id}": lat=${s.lat}, lng=${s.lng}`, true);
+    return false;
+  }
+  // Cuadrante estricto de Manaure Balcón del Cesar y Serranía del Perijá (lat: 10.0 a 10.6, lng: -73.3 a -72.7)
+  if (s.lat < 10.0 || s.lat > 10.6 || s.lng < -73.3 || s.lng > -72.7) {
+    console.error(`[Manaure 3D] ⚠️ Aliado "${s.id}" está fuera del área geográfica de Manaure: lat=${s.lat}, lng=${s.lng}`);
+    logDebug(`⚠️ Aliado "${s.id}" fuera de Manaure: [${s.lng}, ${s.lat}]`, true);
+    return false;
+  }
+  return true;
+}
+
+function getBoundsTodos() {
+  const validStops = Object.values(STOPS).filter(validarAliado);
+  const minLng = Math.min(...validStops.map(s => s.lng));
+  const maxLng = Math.max(...validStops.map(s => s.lng));
+  const minLat = Math.min(...validStops.map(s => s.lat));
+  const maxLat = Math.max(...validStops.map(s => s.lat));
+  return [[minLng, minLat], [maxLng, maxLat]];
+}
+
+if (!mapboxgl.supported || !mapboxgl.supported()) {
+  mostrarFalloMapa("Tu dispositivo o navegador no tiene soporte WebGL para mapas 3D. Activa aceleración gráfica o usa un navegador moderno.");
+  throw new Error("WebGL no soportado en este dispositivo");
+}
+
+let mapLoaded = false;
+window.mapLoaded = false;
+let map = null;
+try {
+  map = new mapboxgl.Map({
+    container: "map",
+    style: "mapbox://styles/mapbox/satellite-streets-v12",
+    center: [-72.978, 10.375],
+    zoom: 11.4,
+    pitch: 35,
+    bearing: -10,
+    antialias: true
+  });
+  window.mapInstance = map;
+  logDebug("Instancia de Mapbox inicializada.");
+} catch (err) {
+  mostrarFalloMapa("No se pudo iniciar el motor del mapa 3D. Revisa tu conexión a internet e inténtalo de nuevo.");
+  throw err;
+}
+
+// Controles nativos en esquina superior derecha (separados de la barra #bar arriba a la izquierda)
+map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+
+// Detección proactiva de fallos de Mapbox (token no autorizado, 401, 403, cuota, red)
+map.on("error", (e) => {
+  console.error("[Manaure 3D] Error de evento Mapbox:", e);
+  if (e && e.error) {
+    const status = e.error.status;
+    const msg = (e.error.message || "").toLowerCase();
+    if (status === 401 || status === 403 || msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("token")) {
+      mostrarFalloMapa("No se pudo autenticar el mapa de Mapbox (Token no autorizado o expirado). Por favor recarga la página.");
+    }
+    logDebug(`Mapbox error: ${msg || status || 'desconocido'}`, true);
+  }
+});
+
+// Timeout de contingencia: si en 14 segundos el mapa no carga, mostrar aviso de recarga
+setTimeout(() => {
+  if (!mapLoaded) {
+    console.warn("[Manaure 3D] Tiempo de espera (14s) agotado sin disparo de map.on('load')");
+    mostrarFalloMapa("El mapa 3D está tardando más de lo habitual en responder. Haz clic en 'Recargar página' para intentar de nuevo.");
+  }
+}, 14000);
+
+/* =========================================================================
+   4) COLIBRÍ DEL PERIJÁ (PERSISTENTE QUE NUNCA DESAPARECE)
+   ========================================================================= */
+const colibriEl = document.createElement("div");
+colibriEl.className = "colibri-marker landed";
+colibriEl.innerHTML = `<div class="colibri-stage">
+  <svg viewBox="0 0 80 80" width="68" height="68" class="colibri-svg" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="cHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#E8830C" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#E8830C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cPlumage" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2ECC71"/>
+      <stop offset="45%" stop-color="#1E8449"/>
+      <stop offset="100%" stop-color="#117A65"/>
+    </linearGradient>
+    <linearGradient id="cThroat" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F39C12"/>
+      <stop offset="100%" stop-color="#E74C3C"/>
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="36" fill="url(#cHalo)" class="colibri-aura"/>
+  <path d="M 64 54 L 74 68 L 68 70 L 58 58 Z" fill="#D35400" class="colibri-tail"/>
+  <path d="M 32 38 Q 50 36 60 52 Q 50 56 36 48 Z" fill="url(#cPlumage)"/>
+  <g class="wing-group">
+    <path d="M 38 40 Q 48 10 66 14 Q 56 30 44 42 Z" fill="#196F3D" opacity="0.95"/>
+    <path d="M 40 40 Q 52 14 62 18 Q 54 32 45 42 Z" fill="#27AE60" opacity="0.6"/>
+  </g>
+  <circle cx="26" cy="35" r="7" fill="#1E8449"/>
+  <path d="M 27 36 Q 30 42 34 41 Q 33 37 29 34 Z" fill="url(#cThroat)"/>
+  <line x1="20" y1="37" x2="6" y2="40" stroke="#17202A" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="26" cy="34" r="1.4" fill="#FFFFFF"/>
+  <circle cx="26" cy="34" r="0.8" fill="#0B1A12"/>
+</svg>
+</div>`;
+
+// Colibrí del Perijá encapsulado para inicializarse solo dentro de map.on("load")
+let colibri = null;
+function initColibri() {
+  if (colibri) return;
+  colibri = new mapboxgl.Marker({ element: colibriEl, anchor: "bottom", offset: [0, -52] })
+    .setLngLat([firstStop.lng, firstStop.lat])
+    .addTo(map);
+  window.colibriInstance = colibri;
+  traerColibriAlFrente();
+  logDebug("Colibrí narrador inicializado sobre Villa Adelaida.");
+
+  colibriEl.addEventListener("click", (evt) => {
+    evt.stopPropagation();
+    if (currentSelectedStop) {
+      showPanel(currentSelectedStop);
+      hablar(`${currentSelectedStop.name}. ${currentSelectedStop.text}`);
+    }
+  });
+}
+
+function traerColibriAlFrente(){
+  const wrap = colibriEl.parentElement;
+  if (wrap) wrap.style.zIndex = "25";
+  colibriEl.style.zIndex = "25";
+}
+
+/* =========================================================================
+   5) FUNCIONES DE INTERACCIÓN, NARRACIÓN Y VUELO CON CÁMARA EN SEGUIMIENTO
+   ========================================================================= */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dist = (a,b) => Math.hypot(a.lat-b.lat, (a.lng-b.lng)*Math.cos(a.lat*Math.PI/180)) * 111;
+
+function setStatus(t){
+  $status.innerHTML = t ? `<span class="flight-pulse"></span><span>${t}</span>` : "";
+  $status.classList.toggle("on", !!t);
+}
+
+function getCameraPadding() {
+  const isMobile = window.innerWidth <= 820;
+  return isMobile
+    ? { top: 70, bottom: Math.round(Math.max(260, window.innerHeight * 0.48)), left: 20, right: 20 }
+    : { top: 80, bottom: 40, left: 40, right: 330 };
+}
+
+let collisionRaf = null;
+function scheduleCollisionCheck() {
+  if (collisionRaf) return;
+  collisionRaf = requestAnimationFrame(() => {
+    collisionRaf = null;
+    actualizarColisionesEtiquetas();
+  });
+}
+
+function actualizarColisionesEtiquetas() {
+  if (!map || !mapLoaded) return;
+  const zoom = map.getZoom();
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const screenCenter = { x: width / 2, y: height / 2 };
+
+  // 1. Zoom < 12.0: Serranía completa, ocultar etiquetas para evitar amontonamiento
+  if (zoom < 12.0) {
+    document.body.classList.add("compacto");
+    Object.values(markerElements).forEach(el => {
+      const isSelected = el.classList.contains("active");
+      el.classList.toggle("badge-collapsed", !isSelected);
+      el.classList.remove("edge-left", "edge-right", "edge-top");
+    });
+    return;
+  }
+
+  document.body.classList.remove("compacto");
+
+  // 2. Calcular posiciones en pantalla de cada aliado activo
+  const markerPositions = [];
+  Object.entries(STOPS).forEach(([id, s]) => {
+    const el = markerElements[id];
+    if (!el) return;
+    try {
+      const p = map.project([s.lng, s.lat]);
+      const distToCenter = Math.hypot(p.x - screenCenter.x, p.y - screenCenter.y);
+      markerPositions.push({
+        id,
+        el,
+        x: p.x,
+        y: p.y,
+        distToCenter,
+        isActive: currentSelectedStop && currentSelectedStop.id === id
+      });
+    } catch(e) {}
+  });
+
+  // 3. Ajuste de bordes (clamping) para no salirse de pantalla
+  markerPositions.forEach(item => {
+    item.el.classList.toggle("edge-left", item.x < 75);
+    item.el.classList.toggle("edge-right", item.x > width - 75);
+    item.el.classList.toggle("edge-top", item.y < 90);
+  });
+
+  // 4. Detección de colisiones (distancia mínima de 88px en pantalla)
+  const COLLISION_THRESHOLD = 88;
+  const collapsedSet = new Set();
+
+  for (let i = 0; i < markerPositions.length; i++) {
+    for (let j = i + 1; j < markerPositions.length; j++) {
+      const m1 = markerPositions[i];
+      const m2 = markerPositions[j];
+      const dist = Math.hypot(m1.x - m2.x, m1.y - m2.y);
+
+      if (dist < COLLISION_THRESHOLD) {
+        if (m1.isActive) {
+          collapsedSet.add(m2.id);
+        } else if (m2.isActive) {
+          collapsedSet.add(m1.id);
+        } else if (m1.distToCenter <= m2.distToCenter) {
+          collapsedSet.add(m2.id);
+        } else {
+          collapsedSet.add(m1.id);
+        }
+      }
+    }
+  }
+
+  markerPositions.forEach(item => {
+    const shouldCollapse = collapsedSet.has(item.id) && !item.isActive;
+    item.el.classList.toggle("badge-collapsed", shouldCollapse);
+    if (item.isActive) {
+      item.el.classList.remove("badge-collapsed");
+    }
+  });
+}
+
+function highlightMarker(stopId) {
+  Object.values(markerElements).forEach(el => el.classList.remove("active"));
+  if (markerElements[stopId]) {
+    markerElements[stopId].classList.add("active");
+    markerElements[stopId].classList.remove("badge-collapsed");
+  }
+  scheduleCollisionCheck();
+}
+
+function showPanel(s){
+  currentSelectedStop = s;
+  highlightMarker(s.id);
+  destDirectSel.value = s.id;
+
+  document.getElementById("panelCat").textContent = s.cat;
+  document.getElementById("panelName").textContent = s.name;
+  document.getElementById("panelText").textContent = s.text;
+  document.getElementById("panelMetaAlt").textContent = s.altText.split("·")[0].trim();
+  document.getElementById("panelMetaLoc").textContent = s.locText.split(",")[0].trim();
+  
+  document.getElementById("panelIllusBox").innerHTML = ILLUSTRATIONS[s.id] || "";
+  
+  document.getElementById("panelImgs").innerHTML =
+    s.images.map(src => `<img src="${src}" alt="${s.name}" onerror="this.src='../assets/convenios/villa-adelaida-01.jpg'">`).join("");
+
+  const WHATSAPP_CENTRAL = "573012706114";
+  const msgWp = encodeURIComponent(`¡Hola! Vengo desde el Mapa 3D de Manaure Vive y deseo información y reservas para ${s.name}.`);
+  document.getElementById("btnWhatsapp").href = `https://wa.me/${WHATSAPP_CENTRAL}?text=${msgWp}`;
+  document.getElementById("btnGps").href = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+
+  // Actualización de la Barra de Itinerario Secuencial (Mejora UX 1)
+  const currentRouteStops = (ROUTES[sel.value] && ROUTES[sel.value].stops) || ROUTES.todos.stops;
+  const currentIndex = currentRouteStops.indexOf(s.id);
+  const totalStops = currentRouteStops.length;
+
+  const btnPrev = document.getElementById("btnPrevStop");
+  const btnNext = document.getElementById("btnNextStop");
+  const counter = document.getElementById("navStopCounter");
+
+  if (counter) {
+    counter.textContent = currentIndex >= 0 ? `Parada ${currentIndex + 1} de ${totalStops}` : "Itinerario";
+  }
+  if (btnPrev) {
+    btnPrev.disabled = currentIndex <= 0;
+    btnPrev.onclick = () => {
+      if (currentIndex > 0) {
+        seleccionarDestino(currentRouteStops[currentIndex - 1]);
+      }
+    };
+  }
+  if (btnNext) {
+    btnNext.disabled = currentIndex < 0 || currentIndex >= totalStops - 1;
+    btnNext.onclick = () => {
+      if (currentIndex >= 0 && currentIndex < totalStops - 1) {
+        seleccionarDestino(currentRouteStops[currentIndex + 1]);
+      }
+    };
+  }
+
+  $panel.classList.add("on");
+}
+
+let isSpeaking = false;
+let speechSessionToken = 0;
+let vozAudio = null; // narración grabada en curso (assets/voz/<id>.mp3)
+let vozFin = null;   // resuelve la promesa de hablar() al detenerla
+
+/* Voz grabada siempre disponible:
+   1) los 10 audios se precargan en memoria (con reintentos) y la narración suena aunque la red falle después;
+   2) un solo <audio> reutilizado que se "desbloquea" con el primer toque (iPhone/Safari y el iframe del brochure);
+   3) si el navegador aún no deja sonar, la voz queda pendiente y suena con el siguiente toque. */
+const vozEl = new Audio();
+vozEl.preload = "auto";
+const vozBlobs = {};
+let vozPendiente = null;
+const vozUrl = (id, intento) => `../assets/voz/${id}.mp3${intento ? "?r=" + intento : ""}`;
+function precargarVoces() {
+  Object.keys(STOPS).forEach((id) => {
+    const intentar = (n) => fetch(vozUrl(id))
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then((b) => { vozBlobs[id] = URL.createObjectURL(b); })
+      .catch(() => { if (n < 4) setTimeout(() => intentar(n + 1), 1500 * n); });
+    intentar(1);
+  });
+}
+setTimeout(precargarVoces, 2500);
+let vozDesbloqueada = false;
+function desbloquearVoz() {
+  if (!vozDesbloqueada && !vozAudio) {
+    vozDesbloqueada = true;
+    vozEl.muted = true;
+    vozEl.dataset.desbloqueo = "1";
+    vozEl.src = vozBlobs.villa || vozUrl("villa");
+    vozEl.play().then(() => {
+      if (vozEl.dataset.desbloqueo) { vozEl.pause(); delete vozEl.dataset.desbloqueo; vozEl.muted = false; }
+    }).catch(() => { delete vozEl.dataset.desbloqueo; vozEl.muted = false; vozDesbloqueada = false; });
+  }
+  if (vozPendiente) { const sonar = vozPendiente; vozPendiente = null; sonar(); }
+}
+["pointerdown", "touchend", "keydown"].forEach((ev) => document.addEventListener(ev, desbloquearVoz, true));
+
+function detenerVoz() {
+  speechSessionToken++;
+  isSpeaking = false;
+  vozPendiente = null;
+  if (vozAudio) { vozAudio.pause(); vozAudio = null; }
+  if (vozFin) { const f = vozFin; vozFin = null; f(); }
+  if ($status && $status.classList.contains("speaking")) {
+    $status.classList.remove("speaking", "on");
+  }
+  actualizarEstadoVozUI(false);
+}
+
+function actualizarEstadoVozUI(hablando) {
+  isSpeaking = hablando;
+  const btnVoice = document.getElementById("btnReplayVoice");
+  if (btnVoice) {
+    if (hablando) {
+      btnVoice.classList.add("speaking");
+      btnVoice.innerHTML = `🔇 Silenciar voz`;
+      btnVoice.title = "Toca para silenciar la narración del colibrí";
+    } else {
+      btnVoice.classList.remove("speaking");
+      btnVoice.innerHTML = `🔊 Escuchar narración`;
+      btnVoice.title = "Escuchar narración del colibrí";
+    }
+  }
+
+  // Habilitar el botón Detener en la barra superior mientras haya voz activa
+  if (btnStop && hablando) {
+    btnStop.disabled = false;
+  }
+}
+
+function hidePanel(){
+  detenerVoz(); // Cierra panel y apaga la voz de inmediato
+  $panel.classList.remove("on");
+  highlightMarker(null);
+  scheduleCollisionCheck();
+}
+
+// Narración con la voz femenina grabada de cada aliado (assets/voz/<id>.mp3); ya no se usa la voz del navegador
+function hablar(texto){
+  detenerVoz(); // Limpia locuciones previas
+  const curSpeechToken = ++speechSessionToken;
+
+  // Sin burbuja de subtítulos: la ficha del aliado ya muestra el texto; se oculta el aviso de estado
+  if ($status) $status.classList.remove("on");
+
+  const parada = Object.values(STOPS).find((st) => texto.startsWith(st.name));
+  if (!voiceChk.checked || !parada) return Promise.resolve();
+
+  actualizarEstadoVozUI(true);
+  return new Promise((resolve) => {
+    let intento = 0;
+    // Timeout de seguridad máximo 25s para evitar promesas colgadas
+    const timerId = setTimeout(() => { if (curSpeechToken === speechSessionToken) vozEl.pause(); terminar(); }, 25000);
+    const terminar = () => {
+      clearTimeout(timerId);
+      if (curSpeechToken === speechSessionToken) {
+        vozPendiente = null;
+        vozAudio = null;
+        vozFin = null;
+        actualizarEstadoVozUI(false);
+      }
+      resolve();
+    };
+    // Primero desde memoria; si falla, desde la red con otra URL (hasta 2 reintentos)
+    const sonar = () => {
+      if (curSpeechToken !== speechSessionToken) return;
+      delete vozEl.dataset.desbloqueo;
+      vozEl.muted = false;
+      vozEl.src = intento === 0 && vozBlobs[parada.id] ? vozBlobs[parada.id] : vozUrl(parada.id, intento);
+      vozEl.play().catch((e) => {
+        if (curSpeechToken !== speechSessionToken) return;
+        // sin permiso de sonido todavía: sonará con el próximo toque (los fallos de carga los atiende onerror)
+        if (e && e.name === "NotAllowedError") vozPendiente = sonar;
+      });
+    };
+    const reintentar = () => {
+      if (curSpeechToken !== speechSessionToken) return;
+      if (++intento <= 2) setTimeout(sonar, 700 * intento); else terminar();
+    };
+    vozAudio = vozEl;
+    vozFin = terminar;
+    vozEl.onended = () => { if (curSpeechToken === speechSessionToken) terminar(); };
+    vozEl.onerror = reintentar;
+    sonar();
+  });
+}
+
+function getStreetPath(fromId, toId, fromCoords, toCoords) {
+  const key = `${fromId}->${toId}`;
+  const cache = PRECOMPUTED_ROUTES[key];
+  const TOL_DEG = 0.02; // ~2.2 km: acepta finales de carretera (ej. páramo) pero descarta cachés ajenos
+  const cerca = (a, b) => Math.hypot(a.lng - b.lng, a.lat - b.lat) < TOL_DEG;
+  const puntoOk = (q) => q && Number.isFinite(q.lng) && Number.isFinite(q.lat);
+  if (puntoOk(fromCoords) && puntoOk(toCoords) && cache && cache.length > 1 &&
+      cerca(cache[0], fromCoords) && cerca(cache[cache.length - 1], toCoords) &&
+      cache.every(puntoOk)) {
+    // Costura suave con interpolación equiespaciada para tramos donde la carretera termina antes (ej. Sabana Rubia / Metallura)
+    const resPath = [{ lng: fromCoords.lng, lat: fromCoords.lat }];
+    
+    // Inicio: si fromCoords dista de cache[0] más de 100m, generar pasos intermedios suaves
+    const firstCache = cache[0];
+    const dStart = Math.hypot(firstCache.lng - fromCoords.lng, firstCache.lat - fromCoords.lat);
+    if (dStart > 0.001) {
+      const stepsStart = Math.min(25, Math.max(2, Math.round(dStart / 0.0004)));
+      for (let s = 1; s < stepsStart; s++) {
+        const u = s / stepsStart;
+        resPath.push({
+          lng: fromCoords.lng + (firstCache.lng - fromCoords.lng) * u,
+          lat: fromCoords.lat + (firstCache.lat - fromCoords.lat) * u
+        });
+      }
+    }
+
+    resPath.push(...cache);
+
+    // Final: si cache termina antes de toCoords (ej. carretera acaba antes de Casa de Vidrio), interpolar pasos suaves hasta el marcador exacto
+    const lastCache = cache[cache.length - 1];
+    const dEnd = Math.hypot(toCoords.lng - lastCache.lng, toCoords.lat - lastCache.lat);
+    if (dEnd > 0.001) {
+      const stepsEnd = Math.min(35, Math.max(2, Math.round(dEnd / 0.0004)));
+      for (let s = 1; s <= stepsEnd; s++) {
+        const u = s / stepsEnd;
+        resPath.push({
+          lng: lastCache.lng + (toCoords.lng - lastCache.lng) * u,
+          lat: lastCache.lat + (toCoords.lat - lastCache.lat) * u
+        });
+      }
+    } else {
+      resPath.push({ lng: toCoords.lng, lat: toCoords.lat });
+    }
+
+    return resPath;
+  }
+  // Curva escénica suave si no está en caché
+  const N = 60, pts = [];
+  const mx = (fromCoords.lng + toCoords.lng)/2, my = (fromCoords.lat + toCoords.lat)/2;
+  const dx = toCoords.lng - fromCoords.lng, dy = toCoords.lat - fromCoords.lat;
+  const len = Math.hypot(dx, dy) || 0.001;
+  const off = len * 0.2;
+  const cx = mx - dy/len*off, cy = my + dx/len*off;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, u = 1 - t;
+    pts.push({
+      lng: u*u*fromCoords.lng + 2*u*t*cx + t*t*toCoords.lng,
+      lat: u*u*fromCoords.lat + 2*u*t*cy + t*t*toCoords.lat
+    });
+  }
+  return pts;
+}
+
+function posEnRuta(path, t){
+  t = Math.min(1, Math.max(0, t)); // blindaje: t siempre en [0,1], jamás índice -1
+  const f = t * (path.length - 1), i = Math.floor(f), u = f - i;
+  const a = path[i], b = path[Math.min(i + 1, path.length - 1)];
+  return { lng: a.lng + (b.lng - a.lng) * u, lat: a.lat + (b.lat - a.lat) * u };
+}
+
+function calcBearing(a, b) {
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function volar(fromStop, toStop){
+  return new Promise((resolve) => {
+    const fromCoords = colibri ? { lng: colibri.getLngLat().lng, lat: colibri.getLngLat().lat } : { lng: fromStop.lng, lat: fromStop.lat };
+    const toCoords = { lng: toStop.lng, lat: toStop.lat };
+    const km = dist(fromCoords, toCoords);
+    if (!Number.isFinite(km)) { // coordenadas inválidas: no despegar a ciegas
+      setStatus(`⚠️ Sin coordenadas válidas para volar a ${toStop.short}`);
+      resolve(false);
+      return;
+    }
+
+    // Duración de vuelo adecuada: visible y lenta para apreciar calles y edificios 3D
+    // Vuelo SIEMPRE animado (nunca teletransporte): hasta los saltos <300 m vuelan 2.5 s
+    const dur = km < 0.3 ? 2500 : Math.min(Math.max(9000, 7500 + km * 2200), 22000);
+
+    setStatus(`Colibrí volando por las calles hacia: ${toStop.short}…`);
+    const path = getStreetPath(fromStop.id || "villa", toStop.id, fromCoords, toCoords);
+
+    colibri.setOffset([0, -10]);
+    colibriEl.classList.remove("landed");
+    colibriEl.classList.add("flying");
+    traerColibriAlFrente();
+
+    // Dibujar ruta iluminada sobre las calles
+    try {
+      const fullCoords = path.map(p => [p.lng, p.lat]);
+      map.getSource("active-route-line").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: fullCoords }
+      });
+    } catch(e) {}
+
+    const zoomDestino = toStop.zoom || 16.8;
+    const bearingInicio = map.getBearing();
+    const miToken = animToken;
+
+    let curCamBearing = bearingInicio;
+
+    // --- Cámara cinematográfica: el pájaro CRUZA la pantalla, no va pegado al centro ---
+    // Fase 1 despegue → Fase 2 se ve TODA la ruta y el colibrí la recorre por las calles
+    // → Fase 3 la cámara baja al destino y el pájaro aterriza y PARA.
+    const vistaInicio = { centro: map.getCenter().toArray(), zoom: map.getZoom() };
+    let vistaRuta;
+    try {
+      const lngs = path.map(pt => pt.lng), lats = path.map(pt => pt.lat);
+      const cam = map.cameraForBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: 90 }
+      );
+      vistaRuta = { centro: [cam.center.lng, cam.center.lat], zoom: Math.min(Math.max(cam.zoom, 10.5), 14.5) };
+    } catch (e) {
+      vistaRuta = { centro: [(fromCoords.lng + toCoords.lng) / 2, (fromCoords.lat + toCoords.lat) / 2], zoom: 12.5 };
+    }
+    const vistaFin = { centro: [toCoords.lng, toCoords.lat], zoom: zoomDestino };
+    let acumulado = 0, ultimoT = performance.now();
+    let terminado = false;
+    let ultimoPct = -1;
+    let pDiag = -1;
+
+    async function terminar(){
+      if (terminado) return;
+      terminado = true;
+      try {
+        colibriEl.classList.remove("flying");
+        colibriEl.classList.add("landed");
+        // Se posa sobre su marcador: GPS exacto al pin, dibujo flotando arriba
+        colibri.setLngLat([toStop.lng, toStop.lat]);
+        colibri.setOffset([0, -52]);
+        traerColibriAlFrente();
+        highlightMarker(toStop.id); // ¡Activa inmediatamente el marcador para que se muestre su ícono 3D y tarjeta debajo del colibrí!
+
+        // Clavar la cámara en el punto con moveend antes de dar por finalizado el vuelo
+        await new Promise((resMove) => {
+          let finished = false;
+          const onMoveEnd = () => {
+            if (finished) return;
+            finished = true;
+            map.off("moveend", onMoveEnd);
+            resMove();
+          };
+          map.once("moveend", onMoveEnd);
+          map.flyTo({
+            center: [toStop.lng, toStop.lat],
+            padding: getCameraPadding(),
+            zoom: zoomDestino,
+            pitch: 45,
+            bearing: toStop.bearing !== undefined ? toStop.bearing : (toStop.id === "metallura" ? -15 : (curCamBearing || -10)),
+            speed: 0.9,
+            curve: 1.2
+          });
+          setTimeout(onMoveEnd, 2800); // timeout de seguridad
+        });
+      } catch (err) {
+        console.error("Error al terminar vuelo:", err);
+      } finally {
+        resolve(true); // true = aterrizó de verdad con cámara fija
+      }
+    }
+
+    function frame(ahora){
+      if (miToken !== animToken) {
+        if (!terminado) { terminado = true; resolve(false); } // cancelado: avisa, no aterriza
+        return;
+      }
+      if (terminado) return;
+      if (paused) { ultimoT = ahora; requestAnimationFrame(frame); return; }
+
+      try {
+        const dtFrame = Math.min(Math.max(ahora - ultimoT, 0), 50); // 0..50ms: ni relojes invertidos ni saltos teletransportan
+        acumulado += dtFrame; ultimoT = ahora;
+        const p = Math.min(1, acumulado / dur);
+        pDiag = p;
+        const pct5 = Math.floor(p * 20);
+        if (pct5 !== ultimoPct) {
+          ultimoPct = pct5;
+          setStatus(`Volando a ${toStop.short} · ${pct5 * 5}% (${km.toFixed(1)} km por calles)…`);
+        }
+        
+        // Suavizado in-out cúbico
+        const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+        const pos = posEnRuta(path, ease);
+        colibri.setLngLat([pos.lng, pos.lat]);
+        traerColibriAlFrente();
+
+        // Dirección de la calle para orientar la vista hacia adelante
+        const posAhead = posEnRuta(path, Math.min(1, ease + 0.04));
+        const roadBearing = calcBearing(pos, posAhead);
+
+        const guiaChk = document.getElementById("guiaChk");
+        const guiaActiva = guiaChk ? guiaChk.checked : true;
+
+        if (guiaActiva) {
+          // TAREA 3 — Modo guía estilo Google Maps:
+          // Suavizado continuo de rotación para evitar saltos en esquinas
+          let dDeg = (roadBearing - curCamBearing) % 360;
+          if (dDeg > 180) dDeg -= 360;
+          if (dDeg < -180) dDeg += 360;
+          curCamBearing += dDeg * 0.22;
+
+          const rad = curCamBearing * (Math.PI / 180);
+          const leadDist = 0.00018; // ~20 metros adelante del colibrí
+          const camCentro = [
+            pos.lng + Math.sin(rad) * leadDist,
+            pos.lat + Math.cos(rad) * leadDist
+          ];
+          // Zoom por fases (igual que modo normal): el pájaro nunca sale del encuadre,
+          // ni siquiera en rutas largas donde antes parecía teletransportarse
+          let camZoomG;
+          if (p < 0.15) {
+            const t = p / 0.15, s = t * t * (3 - 2 * t);
+            camZoomG = vistaInicio.zoom + (vistaRuta.zoom - vistaInicio.zoom) * s;
+          } else if (p < 0.75) {
+            camZoomG = vistaRuta.zoom;
+          } else {
+            const t = (p - 0.75) / 0.25, s = t * t * (3 - 2 * t);
+            camZoomG = vistaRuta.zoom + (vistaFin.zoom - vistaRuta.zoom) * s;
+          }
+
+          map.jumpTo({
+            center: camCentro,
+            zoom: camZoomG,
+            pitch: 58,
+            bearing: curCamBearing
+          });
+        } else {
+          // Con vista guía inactiva, conserva las fases actuales (despegue/ruta/destino)
+          const blendedBearing = bearingInicio + (roadBearing - bearingInicio) * 0.25;
+          let camCentro, camZoom;
+          if (p < 0.15) {
+            const t = p / 0.15, s = t * t * (3 - 2 * t);
+            camCentro = [vistaInicio.centro[0] + (vistaRuta.centro[0] - vistaInicio.centro[0]) * s,
+                         vistaInicio.centro[1] + (vistaRuta.centro[1] - vistaInicio.centro[1]) * s];
+            camZoom = vistaInicio.zoom + (vistaRuta.zoom - vistaInicio.zoom) * s;
+          } else if (p < 0.75) {
+            camCentro = vistaRuta.centro; // ruta completa a la vista: el colibrí la cruza por las calles
+            camZoom = vistaRuta.zoom;
+          } else {
+            const t = (p - 0.75) / 0.25, s = t * t * (3 - 2 * t);
+            camCentro = [vistaRuta.centro[0] + (vistaFin.centro[0] - vistaRuta.centro[0]) * s,
+                         vistaRuta.centro[1] + (vistaFin.centro[1] - vistaRuta.centro[1]) * s];
+            camZoom = vistaRuta.zoom + (vistaFin.zoom - vistaRuta.zoom) * s;
+          }
+
+          map.jumpTo({
+            center: camCentro,
+            zoom: camZoom,
+            pitch: 56,
+            bearing: blendedBearing
+          });
+        }
+
+        if (p < 1) {
+          requestAnimationFrame(frame);
+          return;
+        }
+        terminar();
+      } catch (err) {
+        console.error("Error en animación frame():", err);
+        if (!terminado) { // error real: NO saltar al destino, mostrarlo y quedarse quieto
+          terminado = true;
+          setStatus(`⚠️ No pudo volar ${fromStop.short}→${toStop.short} [p=${pDiag} n=${path.length} km=${Number.isFinite(km) ? km.toFixed(2) : 'NaN'}]: ${err && err.message ? err.message : err}`);
+          resolve(false);
+        }
+      }
+    }
+
+    requestAnimationFrame(frame);
+  });
+}
+
+// Selección manual inmediata al pulsar cualquier marcador o punto
+async function seleccionarDestino(id) {
+  const s = STOPS[id];
+  if (!s) return;
+  const miSelToken = ++animToken;
+  paused = false;
+  btnStart.disabled = false;
+  btnPause.disabled = true;
+  btnStop.disabled = false;
+  sel.disabled = false;
+  btnPause.textContent = "⏸ Pausar";
+  detenerVoz();
+
+  if (!mapLoaded) { // mapa aún cargando: esperar (si no, el vuelo muere al nacer)
+    setStatus("Cargando mapa 3D, espera un momento…");
+    await new Promise((res) => { map.once("load", res); setTimeout(res, 8000); });
+    if (miSelToken !== animToken) return;
+  }
+
+  const prev = currentSelectedStop || firstStop;
+  if (prev && prev.id === s.id && colibriEl.classList.contains("landed")) {
+    map.flyTo({
+      center: [s.lng, s.lat],
+      padding: getCameraPadding(),
+      zoom: s.zoom || 16.8,
+      pitch: 45,
+      bearing: s.bearing !== undefined ? s.bearing : -10,
+      speed: 0.8
+    });
+    colibri.setOffset([0, -52]);
+    traerColibriAlFrente();
+    showPanel(s);
+    await hablar(`${s.name}. ${s.text}`);
+    return;
+  }
+
+  setStatus(`Colibrí iniciando vuelo hacia: ${s.short}…`);
+  const llego = await volar(prev, s);
+
+  if (miSelToken !== animToken) return;
+  if (!llego) return; // vuelo interrumpido o fallido: no mostrar llegada falsa
+
+  const guiaChk = document.getElementById("guiaChk");
+  const guiaActiva = guiaChk ? guiaChk.checked : true;
+  setStatus(guiaActiva ? `Has llegado a ${s.short}` : `Posado en: ${s.short}`);
+  showPanel(s);
+  await hablar(`${s.name}. ${s.text}`);
+}
+
+// Recorrido guiado paso a paso por los aliados
+async function recorrer(ids){
+  const curToken = ++animToken;
+  btnStart.disabled = true;
+  btnPause.disabled = false;
+  btnStop.disabled = false;
+  sel.disabled = true;
+
+  try {
+    let prev = currentSelectedStop || firstStop;
+
+    for (const id of ids){
+      if (curToken !== animToken) return;
+      const s = STOPS[id];
+      if (!s) continue;
+
+      await volar(prev, s);
+      prev = s;
+      if (curToken !== animToken) return;
+
+      const guiaChk = document.getElementById("guiaChk");
+      const guiaActiva = guiaChk ? guiaChk.checked : true;
+      setStatus(guiaActiva ? `Has llegado a ${s.short}` : `Posado en: ${s.short}`);
+      showPanel(s);
+      await hablar(`${s.name}. ${s.text}`);
+      if (curToken !== animToken) return;
+
+      await sleep(3500);
+    }
+
+    setStatus("Recorrido completado con éxito");
+    setTimeout(() => setStatus(""), 4000);
+  } finally {
+    btnStart.disabled = false;
+    btnPause.disabled = true;
+    btnStop.disabled = true;
+    sel.disabled = false;
+  }
+}
+
+/* =========================================================================
+   6) CONSTRUCCIÓN DE MARCADORES ANTI-SOLAPAMIENTO Y CLIC INMEDIATO
+   ========================================================================= */
+function buildMarkerElement(s) {
+  const el = document.createElement("div");
+  el.className = "landmark-marker";
+  el.id = `marker-${s.id}`;
+  el.setAttribute("data-id", s.id);
+
+  const catLabel = s.catTag || (s.cat ? s.cat.split(",")[0].split("·")[0].trim() : "Turismo");
+  const titleLabel = s.short || s.name;
+  const iconFile = s.icon || (typeof CATEGORY_ICONS_3D !== "undefined" ? CATEGORY_ICONS_3D[s.id] : null) || "hospedaje.png";
+
+  el.innerHTML = `
+    <div class="landmark-badge-card">
+      <div class="landmark-labels">
+        <span class="landmark-sub">${catLabel}</span>
+        <span class="landmark-title">${titleLabel}</span>
+      </div>
+    </div>
+    <div class="landmark-diorama-stage">
+      <img src="../assets/iconos-3d/${iconFile}" class="landmark-diorama-model" alt="${titleLabel}" onerror="console.warn('⚠️ Ícono no cargó para aliado:', '${s.id}', this.src); this.src='../assets/iconos-3d/hospedaje.png';">
+      <div class="landmark-ground-shadow"></div>
+      <div class="landmark-anchor-ring"></div>
+    </div>
+  `;
+
+  // Detección de arrastre: si el usuario está arrastrando el mapa con el cursor, no disparar selección
+  let startX = 0, startY = 0, isDragging = false;
+  el.addEventListener("mousedown", (e) => {
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = false;
+  });
+  el.addEventListener("mousemove", (e) => {
+    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
+      isDragging = true;
+    }
+  });
+  el.addEventListener("click", (evt) => {
+    evt.stopPropagation();
+    if (isDragging) return;
+    seleccionarDestino(s.id);
+  });
+
+  return el;
+}
+
+let markersCreated = false;
+function initMarkers() {
+  if (markersCreated) return;
+  markersCreated = true;
+
+  let aliadosMontados = 0;
+  let aliadosFallidos = 0;
+
+  Object.values(STOPS).forEach(s => {
+    try {
+      if (!validarAliado(s)) {
+        aliadosFallidos++;
+        console.error(`[Manaure 3D] Marcador omitido: validación falló para aliado "${s ? s.id : 'desconocido'}"`);
+        logDebug(`⚠️ Aliado descartado por validación: ${s ? (s.short || s.id) : 'nulo'}`, true);
+        return;
+      }
+      const el = buildMarkerElement(s);
+      markerElements[s.id] = el;
+      new mapboxgl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([s.lng, s.lat])
+        .addTo(map);
+      aliadosMontados++;
+      logDebug(`✓ Montado: ${s.short || s.name}`);
+    } catch (err) {
+      aliadosFallidos++;
+      console.error(`[Manaure 3D] Error crítico al montar marcador del aliado "${s ? s.id : 'desconocido'}":`, err);
+      logDebug(`❌ Error al montar "${s ? s.id : 'desconocido'}": ${err.message}`, true);
+    }
+  });
+
+  const resText = `${aliadosMontados}/10 aliados activos montados`;
+  logDebug(`Resumen marcadores: ${resText}. Fallidos: ${aliadosFallidos}`);
+  if (isDebugMode) {
+    const elAllies = document.getElementById("debugHudAllies");
+    if (elAllies) elAllies.textContent = resText;
+  }
+  traerColibriAlFrente();
+}
+
+/* =========================================================================
+   7) CONFIGURACIÓN DE CAPAS 3D (DEM, FOG, DIORAMA Y RUTAS)
+   ========================================================================= */
+function setup3DLayers() {
+  if (map.getSource("mapbox-dem")) return;
+
+  // Relieve 3D de la Serranía del Perijá
+  try {
+    map.addSource("mapbox-dem", {
+      type: "raster-dem",
+      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+      tileSize: 512,
+      maxzoom: 14
+    });
+    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.65 });
+  } catch(e) {}
+
+  // Cielo y atmósfera dorada de la Serranía
+  try {
+    map.setFog({
+      range: [0.8, 8],
+      color: '#E8F5E9',
+      'horizon-blend': 0.15,
+      'high-color': '#C8E6C9',
+      'space-color': '#1B3D28'
+    });
+  } catch(e) {}
+
+
+  // Capa de Línea de Vuelo Luminous sobre las Calles
+  try {
+    if (!map.getSource("active-route-line")) {
+      map.addSource("active-route-line", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [] }
+        }
+      });
+      map.addLayer({
+        id: "route-glow",
+        type: "line",
+        source: "active-route-line",
+        paint: {
+          "line-color": "#E8830C",
+          "line-width": 6,
+          "line-opacity": 0.85,
+          "line-blur": 2
+        }
+      });
+      map.addLayer({
+        id: "route-core",
+        type: "line",
+        source: "active-route-line",
+        paint: {
+          "line-color": "#FFF5EE",
+          "line-width": 3,
+          "line-opacity": 0.95
+        }
+      });
+    }
+  } catch(e) {}
+}
+
+/* =========================================================================
+   8) EVENT LISTENERS Y ARRANQUE
+   ========================================================================= */
+// Solo NUESTROS marcadores: oculta los pines genéricos del mapa base
+// (ej. el pin gris de La Casa de Vidrio) para que en cada sitio se vea
+// la tarjeta + ícono 3D propio. Se re-aplica al cambiar de estilo/iluminación.
+function ocultarPOIsGenericos() {
+  try { map.setConfigProperty("basemap", "showPointOfInterestLabels", false); } catch(e) {}
+  ["poi-label", "poi", "transit-label"].forEach((id) => {
+    try { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none"); } catch(e) {}
+  });
+}
+
+function fitTodosLosConvenios(animated = true) {
+  animToken++;
+  detenerVoz();
+  try { map.stop(); } catch(e) {}
+  hidePanel();
+  destDirectSel.value = "";
+  highlightMarker(null);
+
+  const bounds = getBoundsTodos();
+  const fitOpts = {
+    padding: { top: 90, bottom: 65, left: 65, right: 65 },
+    maxZoom: 12.0,
+    pitch: 35,
+    bearing: -10
+  };
+
+  if (animated) {
+    map.fitBounds(bounds, { ...fitOpts, speed: 0.9, curve: 1.3 });
+  } else {
+    map.fitBounds(bounds, { ...fitOpts, duration: 0 });
+  }
+}
+
+map.on("style.load", () => {
+  setup3DLayers();
+  ocultarPOIsGenericos();
+});
+
+// BLINDAJE SENIOR: Todo lo que agrega capas, fuentes o marcadores se ejecuta dentro de map.on("load")
+map.on("load", () => {
+  mapLoaded = true;
+  window.mapLoaded = true;
+  logDebug("Evento map.on('load') completado exitosamente.");
+  if (isDebugMode) {
+    const s = document.getElementById("debugHudStatus");
+    if (s) { s.textContent = "Mapa cargado exitosamente (WebGL 3D activo)"; s.style.color = "#2ECC71"; }
+  }
+
+  // 1. Configuración de capas y terreno 3D
+  setup3DLayers();
+  ocultarPOIsGenericos();
+
+  // 2. Montaje seguro de marcadores de aliados
+  initMarkers();
+
+  // 3. Montaje del colibrí narrador
+  initColibri();
+
+  // 4. Ajustes de densidad visual y encuadre inicial
+  fitTodosLosConvenios(false);
+  scheduleCollisionCheck();
+
+  // Escuchadores continuos para prevención de colisiones en tiempo real
+  map.on("move", scheduleCollisionCheck);
+  map.on("zoom", scheduleCollisionCheck);
+  map.on("resize", scheduleCollisionCheck);
+
+  // 5. Soporte de enlace directo desde el brochure (?dest=cuatri o ?stop=arepas)
+  const targetStop = urlParams.get("dest") || urlParams.get("stop");
+  if (targetStop && STOPS[targetStop]) {
+    setTimeout(() => {
+      seleccionarDestino(targetStop);
+    }, 1500);
+  }
+});
+
+/* TAREA_CLAUDE_08 — vistas de la tarjeta (solo presentación): min / plegada / paquetes / aliado.
+   Asa: arrastrar arriba sube un nivel, abajo baja uno; tocarla baja (o sube si está en pestaña). */
+const btnToggleBar = document.getElementById("btnToggleBar");
+const barEl = document.getElementById("bar");
+const barAsa = document.getElementById("barAsa");
+function barVista(v) {
+  barEl.dataset.vista = v;
+  barAsa.setAttribute("aria-label", v === "min" ? "Subir opciones del mapa" : "Bajar opciones del mapa");
+  scheduleCollisionCheck();
+}
+const barSubir = () => barVista(barEl.dataset.vista === "min" ? "plegada" : "paquetes");
+const barBajar = () => barVista(barEl.dataset.vista === "plegada" ? "min" : "plegada");
+btnToggleBar.onclick = () => barVista("paquetes");
+let asaY = null, asaArrastre = false;
+barAsa.addEventListener("pointerdown", (e) => { asaY = e.clientY; asaArrastre = false; barAsa.setPointerCapture(e.pointerId); });
+barAsa.addEventListener("pointercancel", () => { asaY = null; });
+barAsa.addEventListener("pointerup", (e) => {
+  if (asaY === null) return;
+  const dy = e.clientY - asaY;
+  asaY = null;
+  if (Math.abs(dy) < 30) return;
+  asaArrastre = true;
+  if (dy < 0) barSubir(); else barBajar();
+});
+barAsa.addEventListener("click", () => {
+  if (asaArrastre) { asaArrastre = false; return; }
+  if (barEl.dataset.vista === "min") barSubir(); else barBajar();
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && (barEl.dataset.vista === "paquetes" || barEl.dataset.vista === "aliado")) barVista("plegada");
+});
+
+const btnVerTodo = document.getElementById("btnVerTodo");
+if (btnVerTodo) {
+  btnVerTodo.onclick = () => {
+    animToken++;
+    detenerVoz();
+    try { map.stop(); } catch(e) {}
+    hidePanel();
+    fitTodosLosConvenios(true);
+    barVista("plegada");
+  };
+}
+
+// Clic libre sobre el mapa deselecciona y cierra panel si está abierto
+map.on("click", () => {
+  hidePanel();
+  destDirectSel.value = "";
+});
+
+destDirectSel.onchange = () => {
+  if (destDirectSel.value) {
+    seleccionarDestino(destDirectSel.value);
+  }
+};
+
+document.getElementById("panelClose").onclick = (e) => {
+  e.stopPropagation();
+  hidePanel();
+};
+
+const sheetHandle = document.getElementById("sheetDragHandle");
+if (sheetHandle) {
+  sheetHandle.onclick = (e) => {
+    e.stopPropagation();
+    hidePanel();
+  };
+}
+
+// Gesto táctil swipe-down para cerrar el bottom sheet en móvil (Mejora UX 2)
+let sheetTouchStartY = 0;
+const panelDOM = document.getElementById("panel");
+if (panelDOM) {
+  panelDOM.addEventListener("touchstart", (e) => {
+    sheetTouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  panelDOM.addEventListener("touchmove", (e) => {
+    const diff = e.touches[0].clientY - sheetTouchStartY;
+    if (diff > 65 && panelDOM.scrollTop <= 0) {
+      hidePanel();
+    }
+  }, { passive: true });
+}
+
+const btnReplayVoice = document.getElementById("btnReplayVoice");
+if (btnReplayVoice) {
+  btnReplayVoice.onclick = () => {
+    if (isSpeaking) {
+      detenerVoz();
+    } else if (currentSelectedStop) {
+      hablar(`${currentSelectedStop.name}. ${currentSelectedStop.text}`);
+    }
+  };
+}
+
+// Tocar la burbuja de subtítulos flotante silencia la narración inmediatamente
+if ($status) {
+  $status.addEventListener("click", () => {
+    if ($status.classList.contains("speaking") || isSpeaking) {
+      detenerVoz();
+    }
+  });
+}
+
+document.getElementById("btnFlyHereAgain").onclick = () => {
+  if (currentSelectedStop) {
+    seleccionarDestino(currentSelectedStop.id);
+  }
+};
+
+// Al cambiar de recorrido, el pájaro se posa en el INICIO de esa ruta
+sel.onchange = async () => {
+  const stops = (ROUTES[sel.value] && ROUTES[sel.value].stops) || [];
+  const first = STOPS[stops[0]];
+  if (!first) return;
+  animToken++; // cancela vuelo/tour en curso
+  paused = false;
+  btnPause.textContent = "⏸ Pausar";
+  detenerVoz();
+  // Vuela al inicio de la ruta (nunca salta): el recorrido empieza donde se posa
+  setStatus(`Volando al inicio de ruta: ${first.short}…`);
+  const llegoRuta = await volar(currentSelectedStop || firstStop, first);
+  if (!llegoRuta) return;
+  showPanel(first);
+  setStatus(`Inicio de ruta: ${first.short} · pulsa Iniciar Vuelo`);
+};
+
+btnStart.onclick = () => {
+  paused = false;
+  btnPause.textContent = "⏸ Pausar";
+  detenerVoz();
+  recorrer(ROUTES[sel.value].stops);
+};
+
+btnPause.onclick = () => {
+  paused = !paused;
+  btnPause.textContent = paused ? "▶ Reanudar" : "⏸ Pausar";
+  if (vozAudio) {
+    if (paused) vozAudio.pause(); else vozAudio.play().catch(() => {});
+  }
+};
+
+btnStop.onclick = () => {
+  animToken++;
+  paused = false;
+  btnStart.disabled = false;
+  btnPause.disabled = true;
+  btnStop.disabled = true;
+  sel.disabled = false;
+  detenerVoz();
+  hidePanel();
+  setStatus("Sobrevuelo detenido");
+  setTimeout(() => setStatus(""), 2000);
+  if (currentSelectedStop && colibri) {
+    colibri.setLngLat([currentSelectedStop.lng, currentSelectedStop.lat]);
+    colibri.setOffset([0, -52]);
+    colibriEl.classList.remove("flying");
+    colibriEl.classList.add("landed");
+    traerColibriAlFrente();
+  }
+};
+
+if (typeof voiceChk !== "undefined" && voiceChk) {
+  voiceChk.addEventListener("change", () => {
+    if (!voiceChk.checked) {
+      detenerVoz();
+    }
+  });
+}
+
+// Tecla Escape para silenciar voz y replegar panel
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    detenerVoz();
+    hidePanel();
+  }
+});
+
+/* TAREA_MAPA_05 Fase A — presentación: cuadrícula de paquetes + lista de aliados.
+   Solo PRESENTA: delega en routeSel/btnStart/destDirectSel existentes. No toca lógica. */
+(function tarjetaB_FaseA() {
+  const grid = document.getElementById("pkgGrid");
+  const allyBox = document.getElementById("allyList");
+  if (!grid || typeof ROUTES === "undefined" || typeof STOPS === "undefined") return;
+  const SHORT = { todos: ["Completo", "Los 10 aliados"], adrenalina: ["Adrenalina", "1 día · 5 paradas"], naturaleza: ["Naturaleza", "2 días · 5 paradas"], sabor: ["Sabor", "1 día · 5 paradas"], foto: ["Fotógrafo", "2 días · 5 paradas"] };
+  const btnVolar = document.getElementById("btnVolar");
+  const pintarVolar = () => {
+    const r = ROUTES[sel.value];
+    btnVolar.textContent = `▶ Volar: ${(SHORT[sel.value] || [sel.value])[0]} · ${r ? r.stops.length : ""}`;
+  };
+  btnVolar.onclick = () => btnStart.click();
+  Object.keys(ROUTES).forEach((key) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pkg-btn";
+    b.dataset.route = key;
+    const s = SHORT[key] || [key, ""];
+    b.innerHTML = "<strong></strong><span></span>";
+    b.querySelector("strong").textContent = "▶ " + s[0];
+    if (key === sel.value) b.classList.add("active");
+    b.querySelector("span").textContent = s[1];
+    b.title = ROUTES[key].label;
+    b.onclick = () => {
+      sel.value = key;
+      grid.querySelectorAll(".pkg-btn").forEach((x) => x.classList.toggle("active", x === b));
+      pintarVolar();
+      barVista("plegada");
+      btnStart.click();
+    };
+    grid.appendChild(b);
+  });
+  const bAlly = document.createElement("button");
+  bAlly.type = "button";
+  bAlly.className = "pkg-btn pkg-aliado";
+  bAlly.innerHTML = "<strong>📍 Un aliado</strong><span>Elegir de 10 ›</span>";
+  const abrirAliados = () => {
+    if (!allyBox.children.length) {
+      const head = document.createElement("div");
+      head.className = "ally-head";
+      const t = document.createElement("strong");
+      t.textContent = "¿A dónde volamos?";
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "ally-x";
+      x.textContent = "✕";
+      x.setAttribute("aria-label", "Cerrar lista");
+      x.onclick = () => barVista("plegada");
+      head.appendChild(t);
+      head.appendChild(x);
+      allyBox.appendChild(head);
+      Object.values(STOPS).forEach((s) => {
+        const a = document.createElement("button");
+        a.type = "button";
+        a.className = "ally-btn";
+        const im = document.createElement("img");
+        im.src = (s.images && s.images[0]) || "";
+        im.alt = "";
+        im.loading = "lazy";
+        const tx = document.createElement("span");
+        tx.className = "ally-txt";
+        const b = document.createElement("b");
+        b.textContent = (s.num ? s.num + " · " : "") + s.short;
+        const ic = document.createElement("i");
+        ic.textContent = s.catTag || s.cat || "";
+        tx.appendChild(b);
+        tx.appendChild(ic);
+        const alt = document.createElement("span");
+        alt.className = "ally-alt";
+        alt.textContent = (s.altText || "").split("·")[0].trim();
+        a.appendChild(im);
+        a.appendChild(tx);
+        a.appendChild(alt);
+        a.onclick = () => { destDirectSel.value = s.id; destDirectSel.onchange(); barVista("plegada"); };
+        allyBox.appendChild(a);
+      });
+    }
+    barVista("aliado");
+  };
+  bAlly.onclick = abrirAliados;
+  document.getElementById("btnAliado").onclick = abrirAliados;
+  grid.appendChild(bAlly);
+  pintarVolar();
+})();
+
+/* TAREA_MAPA_05 Fase B — observador de modo (presentación): no toca lógica de vuelo. */
+(function tarjetaB_FaseB() {
+  if (typeof $panel === "undefined" || typeof btnStop === "undefined") return;
+  const upd = () => {
+    const llegada = $panel.classList.contains("on");
+    const volando = !llegada && !btnStop.disabled;
+    document.body.dataset.modo = llegada ? "llegada" : (volando ? "volando" : "opciones");
+    document.body.dataset.vuelo = btnStop.disabled ? "0" : "1";
+  };
+  new MutationObserver(upd).observe($panel, { attributes: true, attributeFilter: ["class"] });
+  new MutationObserver(upd).observe(btnStop, { attributes: true, attributeFilter: ["disabled"] });
+  upd();
+})();
+
+/* TAREA_MAPA_05 Fase C — ficha expandible + visor de fotos (presentación). */
+(function tarjetaB_FaseC() {
+  if (typeof $panel === "undefined") return;
+  const desc = document.getElementById("panelText");
+  if (desc) desc.addEventListener("click", () => {
+    if ($panel.classList.contains("on")) $panel.classList.toggle("expandida");
+  });
+  const strip = document.getElementById("panelImgs");
+  let visor = null, idx = 0, srcs = [];
+  const close = () => { if (visor) { visor.remove(); visor = null; } };
+  const show = (i) => {
+    idx = (i + srcs.length) % srcs.length;
+    visor.querySelector("img").src = srcs[idx];
+  };
+  document.addEventListener("keydown", (e) => {
+    if (!visor) return;
+    if (e.key === "Escape") { e.stopPropagation(); close(); }
+    if (e.key === "ArrowRight") show(idx + 1);
+    if (e.key === "ArrowLeft") show(idx - 1);
+  }, true);
+  if (strip) strip.addEventListener("click", (e) => {
+    const img = e.target.closest("img");
+    if (!img || !$panel.classList.contains("on")) return;
+    srcs = [...strip.querySelectorAll("img")].map((x) => x.src);
+    close();
+    visor = document.createElement("div");
+    visor.className = "visorOverlay";
+    visor.innerHTML = '<button data-v="p" aria-label="Anterior">‹</button><img alt=""><button data-v="x" aria-label="Cerrar">✕</button><button data-v="n" aria-label="Siguiente">›</button>';
+    visor.querySelector("img").alt = img.alt;
+    visor.addEventListener("click", (ev) => {
+      const v = ev.target.closest("button");
+      if (!v && ev.target.tagName === "IMG") return;
+      if (!v || v.dataset.v === "x") { close(); return; }
+      show(idx + (v.dataset.v === "n" ? 1 : -1));
+    });
+    document.body.appendChild(visor);
+    show(srcs.indexOf(img.src) >= 0 ? srcs.indexOf(img.src) : 0);
+  });
+})();
+</script>
+</body>
+</html>

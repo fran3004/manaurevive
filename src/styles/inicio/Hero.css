@@ -1,0 +1,325 @@
+/* ═══════════════════════════════════
+   HERO – SLIDER FULLSCREEN
+═══════════════════════════════════ */
+.hero {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: 92px max(24px, calc((100vw - 1180px) / 2)) 70px;
+  overflow: hidden;
+}
+
+/* ── Slides de fondo ── */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 0.9s ease,
+    transform 6s ease;
+  z-index: 0;
+}
+
+/* Slide entrante */
+.hero-bg--active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+}
+
+/* Slide saliente */
+.hero-bg--exit {
+  opacity: 0;
+  transform: scale(1.02);
+  z-index: 0;
+}
+
+/* ── Overlay ── */
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    var(--color-alpha-dark-82) 0%,
+    var(--color-alpha-dark-55-green) 55%,
+    var(--shadow-black-15) 100%
+  );
+  z-index: 2;
+}
+
+/* ── Contenido ── */
+.hero-content {
+  position: relative;
+  z-index: 6;
+  max-width: 640px;
+  color: var(--color-white);
+  margin-top: 0;
+}
+
+.hero h1 {
+  font-family: var(--font-title);
+
+  font-size: clamp(34px, 4.6vw, 68px);
+  line-height: 0.95;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+.hero h1 em {
+  font-style: italic;
+}
+
+.hero-content > p:not(.eyebrow) {
+  max-width: 560px;
+  font-size: 24px;
+  color: var(--color-alpha-white-88);
+  margin: 0 0 12px;
+}
+
+.hero .eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.2em;
+}
+
+.hero-slogan {
+  position: absolute;
+  right: 7vw;
+  left: auto;
+  bottom: 110px;
+  z-index: 7;
+  max-width: 320px;
+  color: #fff;
+  font-family: var(--font-script);
+  font-size: clamp(26px, 2.8vw, 36px);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 0.5;
+  text-align: left;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  transform: rotate(-9deg);
+}
+.hero-slogan b {
+  position: relative;
+  display: block;
+  text-align: right;
+  color: #fff;
+  font-weight: 600;
+  padding-bottom: 16px;
+}
+.slogan-line {
+  display: block;
+  text-align: left;
+}
+.hero-slogan b::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -22px;
+  bottom: 2px;
+  height: 8px;
+  background: transparent;
+  border-top: 4px solid #f28c18;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  transform: none;
+  box-shadow: none;
+}
+.hero-slogan b::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: -16px;
+  bottom: -2px;
+  height: 7px;
+  background: transparent;
+  border-top: 2px solid #f5a623;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  opacity: 0.9;
+  transform: none;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+.hero-actions .btn {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  padding: 15px 30px;
+}
+
+/* ── Dots ── */
+.hero-dots {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+}
+
+.hero-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-circle);
+  border: none;
+  background: var(--color-alpha-white-40);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 0.3s,
+    transform 0.3s,
+    width 0.3s;
+}
+.hero-dot::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+.hero-dot.active {
+  background: var(--color-secondary);
+  width: 24px;
+  border-radius: var(--radius-pill);
+}
+
+/* ── Barra de progreso ── */
+.hero-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-alpha-white-15);
+  z-index: 10;
+}
+
+.hero-progress-bar {
+  height: 100%;
+  background: var(--color-secondary);
+  width: 0%;
+  animation: progressFill linear forwards;
+}
+
+@keyframes progressFill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* ══════════════════
+   RESPONSIVE (escala: 1024 / 768 / 560 / 380)
+   Slogan + contenido ajustados en la misma escala.
+   ══════════════════ */
+@media (max-width: 1024px) {
+  .hero-slogan {
+    right: 5vw;
+    left: auto;
+    bottom: 100px;
+    max-width: 44vw;
+    font-size: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    height: 100svh;
+    padding: 105px 24px 90px;
+  }
+  .hero-content {
+    margin-top: 0;
+  }
+  .hero-dots {
+    bottom: 24px;
+  }
+  .hero-slogan {
+    right: 24px;
+    left: auto;
+    bottom: 76px;
+    max-width: 52vw;
+    font-size: 26px;
+    line-height: 0.9;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero {
+    min-height: 100svh;
+    height: 100svh;
+    padding: 110px 20px 120px;
+  }
+  .hero h1 {
+    font-size: 43px;
+  }
+  .hero-content > p:not(.eyebrow) {
+    font-size: 14px;
+  }
+  .hero-content {
+    margin-top: 0;
+  }
+  .hero-slogan {
+    right: 20px;
+    left: auto;
+    bottom: 66px;
+    max-width: calc(100vw - 40px);
+    font-size: 23px;
+    line-height: 0.95;
+    transform: rotate(-8deg);
+  }
+  .hero-slogan b {
+    padding-bottom: 10px;
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 20px;
+  }
+  .hero-actions .btn {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-dots {
+    bottom: 24px;
+  }
+  .intro {
+    padding: 60px 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero {
+    padding: 100px 16px 110px;
+  }
+  .hero h1 {
+    font-size: 36px;
+  }
+  .hero-slogan {
+    right: 16px;
+    bottom: 62px;
+    max-width: calc(100vw - 32px);
+    font-size: 20px;
+    line-height: 0.9;
+    transform: rotate(-7deg);
+  }
+  .hero-dots {
+    bottom: 22px;
+  }
+}

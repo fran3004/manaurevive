@@ -1,0 +1,26 @@
+{
+  "short_name": "Villa Adelaida",
+  "name": "Villa Adelaida · Centro Turístico y Ecológico",
+  "icons": [
+    {
+      "src": "assets/icons/favicon.ico",
+      "sizes": "16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "assets/icons/logo-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "assets/icons/logo-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#e8a020",
+  "background_color": "#f8f5ee"
+}
