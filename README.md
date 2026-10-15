@@ -2,21 +2,12 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Configurar el mapa 3D
+## Mapa 3D
 
-El mapa de `public/brochure/mapa-3d.html` necesita un token público de Mapbox.
-Para configurarlo localmente, copia `public/brochure/mapbox-config.example.js`
-como `public/brochure/mapbox-config.js` y asigna el token:
-
-```js
-window.MAPBOX_ACCESS_TOKEN = "PEGA_AQUI_TU_TOKEN_PUBLICO";
-```
-
-`mapbox-config.js` está excluido de Git para evitar incluir el token en el
-repositorio. Para publicar el sitio, proporciona ese archivo en el proceso de
-despliegue. Los tokens públicos son visibles desde el navegador: crea uno nuevo
-y restringe sus URL permitidas al dominio donde alojes el sitio. No reutilices
-el token anterior; revócalo desde Mapbox.
+El mapa de `public/brochure/mapa-3d.html` funciona sin claves ni archivos de
+configuración locales. Usa MapLibre GL JS, imágenes satelitales y etiquetas de
+Esri, y mosaicos públicos de elevación. Se necesita conexión a internet para
+cargar esas capas.
 
 ## Available Scripts
 

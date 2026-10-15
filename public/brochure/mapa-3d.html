@@ -5,10 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Manaure Vive · Mapa 3D Satelital Interactivo</title>
 
-<!-- Mapbox GL JS v3 (Soporte Mapbox 3D con Terreno y Relieve) -->
-<script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.7.0/dist/mapbox-gl.js"></script>
-<script src="./mapbox-config.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.7.0/dist/mapbox-gl.css" rel="stylesheet">
+<!-- MapLibre GL JS uses public map and terrain tiles without a private API token. -->
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -553,13 +552,13 @@
     50% { transform: translateY(-6px); }
   }
 
-  /* Controles Nativos Mapbox (Esquina Superior Derecha, independiente de la barra #bar) */
-  .mapboxgl-ctrl-top-right {
+  /* Controles nativos del mapa (esquina superior derecha, independiente de #bar) */
+  .maplibregl-ctrl-top-right {
     top: 12px !important;
     right: 12px !important;
     z-index: 30;
   }
-  .mapboxgl-ctrl-top-right .mapboxgl-ctrl {
+  .maplibregl-ctrl-top-right .maplibregl-ctrl {
     margin: 0 0 8px 0;
     box-shadow: 0 4px 16px rgba(0,0,0,0.22);
     border: 1.5px solid rgba(197, 160, 89, 0.4);
@@ -567,7 +566,7 @@
     overflow: hidden;
   }
 
-  /* --- Panel de Información Compacto (NO INVASIVO: debajo de controles Mapbox en escritorio / Bottom Sheet en Móvil) --- */
+  /* --- Panel compacto de información debajo de los controles en escritorio --- */
   #panel {
     position: absolute;
     top: 152px;
@@ -956,7 +955,7 @@
       padding: 6px 9px;
     }
     #bar button, #bar select { min-height: 44px; }
-    .mapboxgl-ctrl-top-right { top: auto !important; bottom: 12px !important; }
+    .maplibregl-ctrl-top-right { top: auto !important; bottom: 12px !important; }
     #bar {
       left: 8px;
       right: auto;
@@ -1128,7 +1127,7 @@
   #bar .ally-list { flex-direction: column; }
 
   /* Lo que estaba abajo se reubica para no quedar bajo la tarjeta */
-  .mapboxgl-ctrl-bottom-left { top: 0; bottom: auto; }
+  .maplibregl-ctrl-bottom-left { top: 0; bottom: auto; }
   #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 90px); }
 
   @media (min-width: 601px) {
@@ -1152,8 +1151,8 @@
     #bar #btnVerTodo { grid-column: 1 / -1; }
   }
   @media (max-width: 600px) {
-    .mapboxgl-ctrl-top-right { top: 8px !important; bottom: auto !important; }
-    .mapboxgl-ctrl-bottom-right { top: 0; bottom: auto; right: 52px; }
+    .maplibregl-ctrl-top-right { top: 8px !important; bottom: auto !important; }
+    .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; right: 52px; }
     #status { bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); }
   }
   /* Con la ficha del aliado abierta en celular/tablet, la ficha ocupa el sitio de la tarjeta */
@@ -1262,7 +1261,7 @@ function initDebugHUD() {
       <span>🛠️ DIAGNÓSTICO MANAURE 3D</span>
       <span id="debugHudTimer" style="font-size:10px;color:#A9DFBF;">0s</span>
     </div>
-    <div style="margin-bottom:4px;"><strong style="color:#FFD700;">Estado:</strong> <span id="debugHudStatus" style="color:#2ECC71;">Iniciando Mapbox GL...</span></div>
+    <div style="margin-bottom:4px;"><strong style="color:#FFD700;">Estado:</strong> <span id="debugHudStatus" style="color:#2ECC71;">Iniciando mapa 3D...</span></div>
     <div style="margin-bottom:4px;"><strong style="color:#FFD700;">Aliados:</strong> <span id="debugHudAllies" style="color:#FAF8F4;">0 / 10</span></div>
     <div style="font-weight:bold;color:#FFD700;margin-top:6px;margin-bottom:2px;">Eventos & Logs:</div>
     <div id="debugHudLogs" style="font-size:10px;color:#A9DFBF;display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:6px;"></div>
@@ -1345,17 +1344,10 @@ window.onerror = function(msg, url, lineNo, colNo, error) {
 /* =========================================================================
    1) ASSETS Y DATOS
    ========================================================================= */
-if (typeof mapboxgl === "undefined") {
-  mostrarFalloMapa("No se pudo cargar la librería Mapbox GL JS. Por favor verifica tu conexión a internet o recarga la página.");
-  throw new Error("Mapbox GL JS no está disponible");
+if (typeof maplibregl === "undefined") {
+  mostrarFalloMapa("No se pudo cargar la librería del mapa 3D. Verifica tu conexión a internet o recarga la página.");
+  throw new Error("MapLibre GL JS no está disponible");
 }
-const mapboxAccessToken = window.MAPBOX_ACCESS_TOKEN;
-if (typeof mapboxAccessToken !== "string" || !mapboxAccessToken.trim()) {
-  mostrarFalloMapa("El mapa 3D requiere configurar un token público de Mapbox. Consulta el README para ver los pasos.");
-  throw new Error("Falta configurar MAPBOX_ACCESS_TOKEN");
-}
-mapboxgl.accessToken = mapboxAccessToken.trim();
-
 const CATEGORY_ICONS_3D = {
   villa:     "hospedaje.png",
   cuatri:    "aventura-offroad.png",
@@ -1660,18 +1652,40 @@ function getBoundsTodos() {
   return [[minLng, minLat], [maxLng, maxLat]];
 }
 
-if (!mapboxgl.supported || !mapboxgl.supported()) {
-  mostrarFalloMapa("Tu dispositivo o navegador no tiene soporte WebGL para mapas 3D. Activa aceleración gráfica o usa un navegador moderno.");
-  throw new Error("WebGL no soportado en este dispositivo");
+const supportsWebGL2 = typeof WebGL2RenderingContext !== "undefined" &&
+  !!document.createElement("canvas").getContext("webgl2");
+if (!supportsWebGL2) {
+  mostrarFalloMapa("Tu dispositivo o navegador no tiene soporte WebGL 2 para mapas 3D. Activa la aceleración gráfica o usa un navegador moderno.");
+  throw new Error("WebGL 2 no está soportado en este dispositivo");
 }
 
 let mapLoaded = false;
 window.mapLoaded = false;
 let map = null;
 try {
-  map = new mapboxgl.Map({
+  map = new maplibregl.Map({
     container: "map",
-    style: "mapbox://styles/mapbox/satellite-streets-v12",
+    style: {
+      version: 8,
+      sources: {
+        imagery: {
+          type: "raster",
+          tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+          tileSize: 256,
+          attribution: "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+        },
+        labels: {
+          type: "raster",
+          tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+          tileSize: 256,
+          attribution: "Labels © Esri"
+        }
+      },
+      layers: [
+        { id: "satellite-imagery", type: "raster", source: "imagery" },
+        { id: "place-labels", type: "raster", source: "labels" }
+      ]
+    },
     center: [-72.978, 10.375],
     zoom: 11.4,
     pitch: 35,
@@ -1679,25 +1693,25 @@ try {
     antialias: true
   });
   window.mapInstance = map;
-  logDebug("Instancia de Mapbox inicializada.");
+  logDebug("Instancia de MapLibre inicializada.");
 } catch (err) {
   mostrarFalloMapa("No se pudo iniciar el motor del mapa 3D. Revisa tu conexión a internet e inténtalo de nuevo.");
   throw err;
 }
 
 // Controles nativos en esquina superior derecha (separados de la barra #bar arriba a la izquierda)
-map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-// Detección proactiva de fallos de Mapbox (token no autorizado, 401, 403, cuota, red)
+// Detección proactiva de fallos de servicios del mapa (red, permisos o cuota)
 map.on("error", (e) => {
-  console.error("[Manaure 3D] Error de evento Mapbox:", e);
+  console.error("[Manaure 3D] Error de evento del mapa:", e);
   if (e && e.error) {
     const status = e.error.status;
     const msg = (e.error.message || "").toLowerCase();
     if (status === 401 || status === 403 || msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("token")) {
-      mostrarFalloMapa("No se pudo autenticar el mapa de Mapbox (Token no autorizado o expirado). Por favor recarga la página.");
+      mostrarFalloMapa("No se pudieron cargar las capas del mapa. Verifica tu conexión a internet e inténtalo de nuevo.");
     }
-    logDebug(`Mapbox error: ${msg || status || 'desconocido'}`, true);
+    logDebug(`Error del mapa: ${msg || status || 'desconocido'}`, true);
   }
 });
 
@@ -1751,7 +1765,7 @@ colibriEl.innerHTML = `<div class="colibri-stage">
 let colibri = null;
 function initColibri() {
   if (colibri) return;
-  colibri = new mapboxgl.Marker({ element: colibriEl, anchor: "bottom", offset: [0, -52] })
+  colibri = new maplibregl.Marker({ element: colibriEl, anchor: "bottom", offset: [0, -52] })
     .setLngLat([firstStop.lng, firstStop.lat])
     .addTo(map);
   window.colibriInstance = colibri;
@@ -2515,7 +2529,7 @@ function initMarkers() {
       }
       const el = buildMarkerElement(s);
       markerElements[s.id] = el;
-      new mapboxgl.Marker({ element: el, anchor: "bottom" })
+      new maplibregl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([s.lng, s.lat])
         .addTo(map);
       aliadosMontados++;
@@ -2540,17 +2554,19 @@ function initMarkers() {
    7) CONFIGURACIÓN DE CAPAS 3D (DEM, FOG, DIORAMA Y RUTAS)
    ========================================================================= */
 function setup3DLayers() {
-  if (map.getSource("mapbox-dem")) return;
+  if (map.getSource("terrain-dem")) return;
 
   // Relieve 3D de la Serranía del Perijá
   try {
-    map.addSource("mapbox-dem", {
+    map.addSource("terrain-dem", {
       type: "raster-dem",
-      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-      tileSize: 512,
-      maxzoom: 14
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      maxzoom: 15,
+      encoding: "terrarium",
+      attribution: "Elevation data © Mapzen, licensed under CC BY 4.0"
     });
-    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.65 });
+    map.setTerrain({ source: "terrain-dem", exaggeration: 1.65 });
   } catch(e) {}
 
   // Cielo y atmósfera dorada de la Serranía
